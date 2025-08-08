@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -10,22 +11,23 @@ import {
   FormControl,
   InputLabel,
   Select,
-  ToggleButton, // Importamos ToggleButton
-  ToggleButtonGroup, // Importamos ToggleButtonGroup
+  ToggleButton,
+  ToggleButtonGroup,
+  CircularProgress,
+  Alert,
+  Snackbar,
+  IconButton,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { Link as MuiLink } from '@mui/material';
-import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const RegisterPage = () => {
-  // Estado para manejar el rol seleccionado (usuario por defecto)
   const [role, setRole] = useState('usuario');
-
-  // Estado para manejar los datos del formulario, ahora con campos para ambos roles
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
     password: '',
-    // Campos de usuario
     fechaNacimiento: '',
     genero: '',
     altura: '',
@@ -34,7 +36,6 @@ const RegisterPage = () => {
     experiencia: '',
     frecuencia: '',
     lesiones: '',
-    // Campos de entrenador
     especialidad: '',
     anosExperiencia: '',
     certificaciones: '',
@@ -42,11 +43,27 @@ const RegisterPage = () => {
     telefono: '',
   });
 
-  // Maneja el cambio de rol
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        navigate('/');
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [success, navigate]);
+
   const handleRoleChange = (event, newRole) => {
     if (newRole !== null) {
       setRole(newRole);
-      // Opcional: limpiar los campos al cambiar de rol para evitar confusiones
       setFormData({
         ...formData,
         fechaNacimiento: '',
@@ -70,11 +87,70 @@ const RegisterPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log(`Datos de registro como ${role}:`, formData);
-    // Aquí puedes enviar los datos a tu API para su procesamiento
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+    setError(null);
   };
+
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+
+  try {
+    // ----------------------------------------------------------------------
+    // CÓDIGO CORREGIDO
+    // Construye la URL de la API de registro de forma condicional,
+    // usando 'user' o 'trainer' para que coincida con las rutas del backend.
+    // ----------------------------------------------------------------------
+    const apiEndpointBase = 'http://localhost:8000/api/register/';
+    const registerUrl = role === 'usuario' ? `${apiEndpointBase}user/` : `${apiEndpointBase}trainer/`;
+
+    const response = await axios.post(registerUrl, formData);
+
+    if (response.status === 201) {
+      setSuccess(true);
+      setSnackbarSeverity('success');
+      setSnackbarMessage('¡Registro exitoso! Redirigiendo...');
+      setSnackbarOpen(true);
+    }
+  } catch (err) {
+    console.error('Error durante el registro:', err);
+    let errorMessage = 'Error de conexión. Inténtalo de nuevo.';
+    if (err.response) {
+      // El servidor respondió con un status code fuera del rango 2xx
+      if (err.response.data.email) {
+        errorMessage = err.response.data.email[0];
+      } else if (err.response.data.password) {
+        errorMessage = err.response.data.password[0];
+      } else if (err.response.data.non_field_errors) {
+        errorMessage = err.response.data.non_field_errors[0];
+      } else {
+        errorMessage = 'Ocurrió un error al procesar el registro.';
+      }
+    }
+    setSnackbarSeverity('error');
+    setSnackbarMessage(errorMessage);
+    setSnackbarOpen(true);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const snackbarAction = (
+    <IconButton
+      size="small"
+      aria-label="close"
+      color="inherit"
+      onClick={handleCloseSnackbar}
+    >
+      <CloseIcon fontSize="small" />
+    </IconButton>
+  );
 
   return (
     <Container maxWidth="sm">
@@ -83,7 +159,6 @@ const RegisterPage = () => {
           Registro
         </Typography>
 
-        {/* Selector de rol */}
         <ToggleButtonGroup
           value={role}
           exclusive
@@ -96,7 +171,6 @@ const RegisterPage = () => {
         </ToggleButtonGroup>
 
         <Box component="form" onSubmit={handleSubmit} noValidate>
-          {/* Información Personal común para ambos roles */}
           <Typography variant="h6" mt={2} mb={1}>Datos de Cuenta</Typography>
           <TextField
             label="Nombre Completo"
@@ -116,22 +190,7 @@ const RegisterPage = () => {
             fullWidth
             margin="normal"
             autoComplete="off"
-            InputLabelProps={{
-              sx: {
-                transform: 'translate(14px, 10px) scale(1)', 
-                '&.Mui-focused': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                },
-                '&.MuiFormLabel-filled': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                },
-              },
-            }}
-            InputProps={{
-              sx: {
-                padding: '12.5px 14px', 
-              },
-            }}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Contraseña"
@@ -142,25 +201,9 @@ const RegisterPage = () => {
             fullWidth
             margin="normal"
             autoComplete="new-password"
-            InputLabelProps={{
-              sx: {
-                transform: 'translate(14px, 10px) scale(1)',
-                '&.Mui-focused': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                },
-                '&.MuiFormLabel-filled': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                },
-              },
-            }}
-            InputProps={{
-              sx: {
-                padding: '12.5px 14px',
-              },
-            }}
+            InputLabelProps={{ shrink: true }}
           />
 
-          {/* Renderizado condicional de campos específicos para cada rol */}
           {role === 'usuario' ? (
             <Box>
               <Typography variant="h6" mt={4} mb={1}>Datos para tu Plan de Entrenamiento</Typography>
@@ -297,7 +340,13 @@ const RegisterPage = () => {
               />
             </Box>
           )}
-          
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+
           <Button
             type="submit"
             variant="contained"
@@ -307,10 +356,11 @@ const RegisterPage = () => {
               backgroundColor: '#00838F',
               '&:hover': { backgroundColor: '#006064' }
             }}
+            disabled={loading}
           >
-            Registrarse como {role === 'usuario' ? 'Usuario' : 'Entrenador'}
+            {loading ? <CircularProgress size={24} color="inherit" /> : `Registrarse como ${role === 'usuario' ? 'Usuario' : 'Entrenador'}`}
           </Button>
-          
+
           <Typography variant="body2" textAlign="center" sx={{ mt: 2 }}>
             ¿Ya tienes una cuenta?{' '}
             <Link to="/" style={{ textDecoration: 'none' }}>
@@ -321,6 +371,21 @@ const RegisterPage = () => {
           </Typography>
         </Box>
       </Paper>
+
+      <Snackbar
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
