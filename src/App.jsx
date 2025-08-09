@@ -4,6 +4,7 @@ import RegisterPage from './components/RegisterPage';
 import LoginPage from './components/loginPage';
 import UserDashboardPage from './components/UserDashboardPage';
 import TrainerDashboardPage from './components/TrainerDashboardPage';
+import MiRutina from './pages/MiRutina';
 
 const PrivateRoute = ({ children, isAuthenticated }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
@@ -17,6 +18,9 @@ function App() {
     role: null,
   });
 
+  // Estado para saber si estamos cargando la info de autenticación
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
   // Sincronizar estado con localStorage al montar la app
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -29,24 +33,24 @@ function App() {
         role,
       });
     }
+    setLoadingAuth(false); // Ya terminó de cargar
   }, []);
 
   const handleLogin = (token, role) => {
-  if (!token || !role) {
-    console.error('Falta token o rol en login');
-    return;
-  }
+    if (!token || !role) {
+      console.error('Falta token o rol en login');
+      return;
+    }
 
-  setAuth({
-    isAuthenticated: true,
-    token,
-    role,
-  });
+    setAuth({
+      isAuthenticated: true,
+      token,
+      role,
+    });
 
-  localStorage.setItem('authToken', token);
-  localStorage.setItem('userRole', role);
-};
-
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('userRole', role);
+  };
 
   const handleLogout = () => {
     setAuth({
@@ -57,6 +61,25 @@ function App() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userRole');
   };
+
+  // Mientras cargamos la autenticación mostramos un mensaje o spinner
+  if (loadingAuth) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          width: '100vw',
+          backgroundColor: '#f5f5f5',
+          fontSize: '1.5rem',
+        }}
+      >
+        Cargando...
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
@@ -81,23 +104,31 @@ function App() {
           }
         />
 
-        {/* Ruta protegida */}
+        {/* Ruta protegida dashboard */}
         <Route
-  path="/dashboard"
-  element={
-    <PrivateRoute isAuthenticated={auth.isAuthenticated}>
-      {auth.role === 'usuario' ? (
-        <UserDashboardPage token={auth.token} onLogout={handleLogout} />
-      ) : auth.role === 'entrenador' ? (
-        <TrainerDashboardPage token={auth.token} onLogout={handleLogout} />
-      ) : (
-        // Si el rol no es válido, redirigir al login o mostrar mensaje
-        <Navigate to="/login" />
-      )}
-    </PrivateRoute>
-  }
-/>
+          path="/dashboard"
+          element={
+            <PrivateRoute isAuthenticated={auth.isAuthenticated}>
+              {auth.role === 'usuario' ? (
+                <UserDashboardPage token={auth.token} onLogout={handleLogout} />
+              ) : auth.role === 'entrenador' ? (
+                <TrainerDashboardPage token={auth.token} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" />
+              )}
+            </PrivateRoute>
+          }
+        />
 
+        {/* Ruta protegida MiRutina */}
+        <Route
+          path="/mi-rutina/:id"
+          element={
+            <PrivateRoute isAuthenticated={auth.isAuthenticated}>
+              {auth.role === 'usuario' ? <MiRutina token={auth.token} /> : <Navigate to="/login" />}
+            </PrivateRoute>
+          }
+        />
 
         {/* Ruta por defecto */}
         <Route path="/" element={<Navigate to="/login" />} />

@@ -107,7 +107,7 @@ const RegisterPage = () => {
     // Construye la URL de la API de registro de forma condicional,
     // usando 'user' o 'trainer' para que coincida con las rutas del backend.
     // ----------------------------------------------------------------------
-    const apiEndpointBase = 'http://localhost:8000/api/register/';
+    const apiEndpointBase = 'http://localhost:8000/api/users/register/';
     const registerUrl = role === 'usuario' ? `${apiEndpointBase}user/` : `${apiEndpointBase}trainer/`;
 
     const response = await axios.post(registerUrl, formData);

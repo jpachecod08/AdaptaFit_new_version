@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from './../api/api'; // Asegúrate que la ruta de importación es correcta
 import {
   Box,
   CircularProgress,
@@ -15,15 +15,14 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-const UserDashboardPage = ({ onLogout }) => {
+const UserDashboardPage = ({ token, onLogout }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [rutinaLoading, setRutinaLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-
     if (!token) {
       navigate('/login');
       return;
@@ -31,29 +30,26 @@ const UserDashboardPage = ({ onLogout }) => {
 
     const fetchUserData = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/profile/', {
-          headers: { Authorization: `Token ${token}` }
-        });
+        // CORRECTO: ruta completa con 'users'
+        const response = await API.get('users/profile/');
 
         const user = response.data;
         console.log('Datos usuario:', user);
 
         setUserData({
+          id: user.id,
           email: user.email,
           name: user.nombre || user.nombre_usuario || user.name,
           role: user.role,
         });
 
         if (user.role !== 'usuario') {
-          // Si no es usuario, redirigir fuera (opcional)
           navigate('/login');
         }
-
       } catch (err) {
         console.error('Error al obtener perfil:', err);
         setError('No se pudieron cargar los datos del usuario.');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userRole');
+        onLogout();
         navigate('/login');
       } finally {
         setLoading(false);
@@ -61,14 +57,51 @@ const UserDashboardPage = ({ onLogout }) => {
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [token, navigate, onLogout]);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userRole');
     onLogout();
     navigate('/login');
   };
+
+  const handleVerRutina = async () => {
+    if (!userData?.id) {
+        alert('Usuario no identificado');
+        return;
+    }
+    setRutinaLoading(true);
+    try {
+        // Obtener el token del localStorage
+        const token = localStorage.getItem('authToken');
+
+        // Verificar si el token existe
+        if (!token) {
+            alert('No se encontró el token de autenticación');
+            setRutinaLoading(false);
+            onLogout();
+            return;
+        }
+
+        // CORRECTO: Llamas a la ruta y pasas el token en los headers
+        const res = await API.get(`workouts/plans/usuario/${userData.id}/`, {
+            headers: {
+                Authorization: `Token ${token}`
+            }
+        });
+
+        const plan = res.data;
+        if (!plan.id) {
+            alert('No se encontró rutina para este usuario.');
+            return;
+        }
+        navigate(`/mi-rutina/${plan.id}`);
+    } catch (error) {
+        console.error('Error al cargar rutina:', error);
+        alert('No se pudo cargar la rutina');
+    } finally {
+        setRutinaLoading(false);
+    }
+};
 
   if (loading) {
     return (
@@ -95,9 +128,7 @@ const UserDashboardPage = ({ onLogout }) => {
         <Typography variant="h4" gutterBottom>
           ¡Bienvenido, {userData?.name || 'Usuario'}!
         </Typography>
-        <Typography variant="h6">
-          Tu rol es: {userData?.role}
-        </Typography>
+        <Typography variant="h6">Tu rol es: {userData?.role}</Typography>
         <Typography variant="body1" sx={{ mt: 2 }}>
           {userData?.email}
         </Typography>
@@ -110,7 +141,6 @@ const UserDashboardPage = ({ onLogout }) => {
         </Button>
       </Paper>
 
-      {/* Opciones para usuario */}
       <Grid container spacing={3}>
         <Grid item xs={12} sm={6}>
           <Card sx={{ height: '100%' }}>
@@ -141,8 +171,8 @@ const UserDashboardPage = ({ onLogout }) => {
               </Typography>
             </CardContent>
             <CardActions>
-              <Button size="small" onClick={() => navigate('/mi-rutina')}>
-                Ver Rutina
+              <Button size="small" onClick={handleVerRutina} disabled={rutinaLoading}>
+                {rutinaLoading ? 'Cargando...' : 'Ver Rutina'}
               </Button>
             </CardActions>
           </Card>
@@ -153,5 +183,7 @@ const UserDashboardPage = ({ onLogout }) => {
 };
 
 export default UserDashboardPage;
+
+
 
 
