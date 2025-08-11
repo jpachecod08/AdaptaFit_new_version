@@ -102,3 +102,44 @@ class AuthTokenSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+    
+
+# En tu archivo serializers.py
+
+# En tu archivo serializers.py
+
+class EntrenadorListSerializer(serializers.ModelSerializer):
+    trainer_profile = TrainerProfileSerializer()
+    nombre_completo = serializers.SerializerMethodField()
+    rating_promedio = serializers.SerializerMethodField()
+    # Nuevos campos para las estadísticas
+    clientes_total = serializers.SerializerMethodField()
+    sesiones_completadas = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'id',
+            'nombre_completo',
+            'email',
+            'date_joined',
+            'trainer_profile',
+            'rating_promedio',
+            'clientes_total',
+            'sesiones_completadas',
+        ]
+
+    def get_nombre_completo(self, obj):
+        return obj.nombre if obj.nombre else obj.email.split('@')[0]
+
+    def get_rating_promedio(self, obj):
+        # Valor estático de ejemplo
+        return 4.5
+
+    def get_clientes_total(self, obj):
+        # Valor estático de ejemplo
+        return 25
+
+    def get_sesiones_completadas(self, obj):
+        # Valor estático de ejemplo
+        return 350

@@ -15,8 +15,42 @@ from django.contrib.auth.decorators import login_required
 
 
 # Configuración de la API de Gemini
-GEMINI_API_KEY = "AIzaSyBxWn4-RHztNlStl5aolx5QQFXb6Jcns3U"
+GEMINI_API_KEY = "AIzaSyCR-3f8yFBdpCDG7XCk1-9deAOblEHNIOY"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def chat_asistente(request):
+    pregunta = request.data.get("prompt", "").strip()
+    if not pregunta:
+        return Response({"error": "No se recibió pregunta"}, status=400)
+
+    try:
+        response = requests.post(
+            GEMINI_URL,
+            json={
+                "contents": [{"parts": [{"text": pregunta}]}]
+            }
+        )
+        data = response.json()
+
+        texto_respuesta = (
+            data.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text", "")
+        )
+
+        if not texto_respuesta:
+            return Response({"error": "No se obtuvo respuesta"}, status=500)
+
+        return Response({"answer": texto_respuesta})
+
+    except requests.RequestException as e:
+        print(f"Error en Gemini: {e}")
+        return Response({"error": "Error al conectar con Gemini"}, status=500)
 
 
 def limpiar_texto_rutina(text_result):

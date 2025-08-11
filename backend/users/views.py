@@ -8,6 +8,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate # <-- Necesario para el serializador
 from rest_framework.settings import api_settings
+from .serializers import EntrenadorListSerializer
+from django.db.models import Q
+from rest_framework import generics
+from .models import CustomUser
 
 from .serializers import CustomUserSerializer, TrainerRegisterSerializer, AuthTokenSerializer
 
@@ -90,3 +94,23 @@ class UserProfileView(APIView):
         user = request.user
         serializer = CustomUserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class EntrenadorListView(generics.ListAPIView):
+    serializer_class = EntrenadorListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = CustomUser.objects.filter(
+            trainer_profile__isnull=False,
+            is_active=True
+        ).select_related('trainer_profile').order_by('-date_joined')
+
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(nombre__icontains=search) |
+                Q(trainer_profile__especialidad__icontains=search) |
+                Q(trainer_profile__certificaciones__icontains=search)
+            )
+
+        return queryset
