@@ -59,7 +59,7 @@ const RegisterPage = () => {
         // En un entorno de aplicación real, esta línea funcionaría.
         navigate('/');
         console.log('Registro exitoso. Redireccionando a la página de inicio.');
-      }, 3000);
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
@@ -103,37 +103,34 @@ const RegisterPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
 
-    try {
-      const apiEndpointBase = 'http://localhost:8000/api/users/register/';
-      let registerUrl = '';
-      let payload = {};
+  try {
+    const apiEndpointBase = 'http://localhost:8000/api/users/register/';
+    const registerUrl = role === 'usuario'
+      ? `${apiEndpointBase}user/`
+      : `${apiEndpointBase}trainer/`;
 
-      // Construir el payload de manera condicional según el rol
-      if (role === 'usuario') {
-        registerUrl = `${apiEndpointBase}user/`;
-        payload = {
+    // Formatear fecha a YYYY-MM-DD si viene en dd/mm/yyyy
+    const fechaNacimiento = formData.fechaNacimiento.includes('/')
+      ? formData.fechaNacimiento.split('/').reverse().map(p => p.padStart(2, '0')).join('-')
+      : formData.fechaNacimiento;
+
+    // Construir payload
+    const payload = role === 'usuario'
+      ? {
           nombre: formData.nombre,
           email: formData.email,
           password: formData.password,
-          user_profile: {
-            fechaNacimiento: formData.fechaNacimiento,
-            genero: formData.genero,
-            altura: formData.altura,
-            peso: formData.peso,
-            objetivo: formData.objetivo,
-            experiencia: formData.experiencia,
-            frecuencia: formData.frecuencia,
-            lesiones: formData.lesiones,
+          profile: {
+            ...formData,           // mantenemos todos los campos del usuario
+            fechaNacimiento,       // reemplazamos solo la fecha
           },
-        };
-      } else {
-        registerUrl = `${apiEndpointBase}trainer/`;
-        payload = {
+        }
+      : {
           nombre: formData.nombre,
           email: formData.email,
           password: formData.password,
@@ -145,42 +142,30 @@ const RegisterPage = () => {
             telefono: formData.telefono,
           },
         };
-      }
 
-      // Enviar el payload correcto al endpoint correcto
-      const response = await axios.post(registerUrl, payload);
+    const response = await axios.post(registerUrl, payload);
 
-      if (response.status === 201) {
-        setSuccess(true);
-        setSnackbarSeverity('success');
-        setSnackbarMessage('¡Registro exitoso! Redirigiendo...');
-        setSnackbarOpen(true);
-      }
-    } catch (err) {
-      console.error('Error durante el registro:', err);
-      let errorMessage = 'Error de conexión. Inténtalo de nuevo.';
-      if (err.response) {
-        if (err.response.data.email) {
-          errorMessage = err.response.data.email[0];
-        } else if (err.response.data.password) {
-          errorMessage = err.response.data.password[0];
-        } else if (err.response.data.non_field_errors) {
-          errorMessage = err.response.data.non_field_errors[0];
-        } else if (err.response.data.trainer_profile) {
-            errorMessage = `Error en el perfil del entrenador: ${JSON.stringify(err.response.data.trainer_profile)}`;
-        } else if (err.response.data.user_profile) {
-            errorMessage = `Error en el perfil del usuario: ${JSON.stringify(err.response.data.user_profile)}`;
-        } else {
-          errorMessage = 'Ocurrió un error al procesar el registro.';
-        }
-      }
-      setSnackbarSeverity('error');
-      setSnackbarMessage(errorMessage);
+    if (response.status === 201) {
+      setSuccess(true);
+      setSnackbarSeverity('success');
+      setSnackbarMessage('¡Registro exitoso! Redirigiendo...');
       setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error('Error durante el registro:', err);
+
+    const errorMessage = err.response?.data?.profile?.fechaNacimiento
+      ? `Fecha de nacimiento: ${err.response.data.profile.fechaNacimiento[0]}`
+      : 'Ocurrió un error al procesar el registro.';
+
+    setSnackbarSeverity('error');
+    setSnackbarMessage(errorMessage);
+    setSnackbarOpen(true);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const snackbarAction = (
     <IconButton

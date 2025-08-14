@@ -114,3 +114,5 @@ class EntrenadorListView(generics.ListAPIView):
             )
 
         return queryset
+    
+    

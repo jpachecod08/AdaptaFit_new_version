@@ -20,7 +20,7 @@ class TrainerProfileSerializer(serializers.ModelSerializer):
 
 # Serializador para el registro de usuarios normales.
 class CustomUserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(read_only=True)
+    profile = UserProfileSerializer(required=True)  # Ya no read_only
 
     class Meta:
         model = CustomUser
@@ -40,10 +40,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        profile_data = validated_data.pop('profile')  # Extraemos los datos del perfil
         password = validated_data.pop('password')
         user = CustomUser.objects.create_user(password=password, **validated_data)
-        UserProfile.objects.create(user=user)
+        UserProfile.objects.create(user=user, **profile_data)  # Creamos perfil con los datos
         return user
+
 
 # Serializador para el registro de entrenadores.
 class TrainerRegisterSerializer(serializers.ModelSerializer):

@@ -147,14 +147,31 @@ def generar_rutina_con_gemini(user_profile):
 def generar_y_guardar_plan(user):
     """
     Genera un plan de ejercicios para un usuario y lo guarda en la BD.
+    Valida que el usuario tenga un perfil con datos esenciales antes de llamar a Gemini.
     """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    if not isinstance(user, User):
+        print("[ERROR] El argumento 'user' no es una instancia de User.")
+        return None
+
     try:
         profile = UserProfile.objects.get(user=user)
     except UserProfile.DoesNotExist:
+        print(f"[WARN] No existe perfil para el usuario {user.id}")
         return None
+
+    # Validar que el perfil tenga datos esenciales
+    campos_obligatorios = ['fechaNacimiento', 'altura', 'peso', 'objetivo', 'experiencia', 'frecuencia']
+    for campo in campos_obligatorios:
+        if not getattr(profile, campo, None):
+            print(f"[WARN] Falta el campo '{campo}' en el perfil del usuario {user.id}")
+            return None
 
     rutina_data = generar_rutina_con_gemini(profile)
     if not rutina_data:
+        print(f"[ERROR] Gemini no devolvió una rutina válida para el usuario {user.id}")
         return None
 
     plan = WorkoutPlan.objects.create(
@@ -162,6 +179,7 @@ def generar_y_guardar_plan(user):
         generated_at=timezone.now(),
         user=user
     )
+
     for idx, day in enumerate(rutina_data.get("days", [])):
         day_obj = plan.days.create(name=day.get("name", f"Día {idx+1}"), day_index=idx)
         for ex in day.get("exercises", []):
@@ -172,6 +190,8 @@ def generar_y_guardar_plan(user):
                 rest_seconds=ex.get("rest_seconds", 0),
                 notes=ex.get("notes", "")
             )
+
+    print(f"[INFO] Plan generado y guardado para usuario {user.id}")
     return plan
 
 
@@ -191,15 +211,37 @@ def plan_detail(request, plan_id):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def plan_por_usuario(request, user_id):
-    if int(user_id) != request.user.id:
-        return Response({'error': 'No autorizado'}, status=403)
+    try:
+        # Permitir solo al dueño de la cuenta o a superusuarios
+        if int(user_id) != request.user.id and not request.user.is_superuser:
+            return Response({'error': 'No autorizado'}, status=403)
 
-    plan = WorkoutPlan.objects.filter(user_id=user_id).order_by('-generated_at').first()
+        # Buscar plan más reciente
+        plan = WorkoutPlan.objects.filter(user_id=user_id).order_by('-generated_at').first()
 
-    if not plan:
-        plan = generar_y_guardar_plan(request.user)
         if not plan:
-            return Response({'error': 'No se pudo generar la rutina'}, status=500)
+            print(f"[INFO] No hay plan previo para usuario {user_id}, generando uno nuevo...")
+            user_obj = request.user if int(user_id) == request.user.id else None
 
-    serializer = WorkoutPlanSerializer(plan)
-    return Response(serializer.data)
+            # Si el que hace la petición es superusuario, buscar el usuario correspondiente
+            if user_obj is None and request.user.is_superuser:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                try:
+                    user_obj = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    return Response({'error': f'Usuario con ID {user_id} no existe'}, status=404)
+
+            # Generar plan
+            plan = generar_y_guardar_plan(user_obj)
+            if not plan:
+                return Response({'error': f'No se pudo generar la rutina para usuario {user_id}. Verifique que tenga perfil y datos completos.'}, status=400)
+
+        serializer = WorkoutPlanSerializer(plan)
+        return Response(serializer.data)
+
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] Error inesperado en plan_por_usuario para usuario {user_id}: {e}")
+        traceback.print_exc()
+        return Response({'error': 'Error interno al procesar la solicitud'}, status=500)
