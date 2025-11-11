@@ -15,13 +15,13 @@ import {
   IconButton,
 } from '@mui/material';
 import axios from 'axios';
-// import {
-//   Users,
-//   Dumbbell,
-//   LineChart as LineChartIcon,
-//   LogOut,
-//   ArrowLeft,
-// } from 'lucide-react';
+import {
+  Users,
+  Dumbbell,
+  LineChart as LineChartIcon,
+  LogOut,
+  ArrowLeft,
+} from 'lucide-react';
 import {
   LineChart,
   Line,
