@@ -65,12 +65,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'adaptafit_backend.wsgi.application'
 
-# DATABASES - PostgreSQL para Render (CORREGIDO)
+# DATABASES - Para psycopg3
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', 'postgresql://adaptafit_db_user:STB1m8fhTbWWu7dcF23HwgqohgWwBl8E@dpg-d4a7qgh5pdvs73e1uceg-a/adaptafit_db'),
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'adaptafit_db',
+        'USER': 'adaptafit_db_user',
+        'PASSWORD': 'STB1m8fhTbWWu7dcF23HwgqohgWwBl8E',
+        'HOST': 'dpg-d4a7qgh5pdvs73e1uceg-a',
+        'PORT': '5432',
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
