@@ -41,8 +41,11 @@ import {
   Description,
   Phone,
 } from '@mui/icons-material';
+// import {API_URL} from '../config'
 import { Link as MuiLink } from '@mui/material';
 import axios from 'axios';
+const API_URL = 'https://adaptafit.onrender.com';
+console.log('🔧 Usando API_URL:', API_URL);
 
 const RegisterPage = () => {
   const [role, setRole] = useState('usuario');

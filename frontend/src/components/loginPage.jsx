@@ -38,9 +38,10 @@ import {
   Key,
   Security,
 } from '@mui/icons-material';
-import {API_URL} from '../config'
+// import {API_URL} from '../config'
 import { Link, useNavigate } from 'react-router-dom';
-
+const API_URL = 'https://adaptafit.onrender.com';
+console.log('🔧 Usando API_URL:', API_URL);
 const LoginPage = ({ onLogin }) => {
   const [role, setRole] = useState('usuario');
   const [email, setEmail] = useState('');
