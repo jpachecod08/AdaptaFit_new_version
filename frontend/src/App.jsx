@@ -5,6 +5,7 @@ import LoginPage from './components/loginPage';
 import UserDashboardPage from './components/UserDashboardPage';
 import TrainerDashboardPage from './components/TrainerDashboardPage';
 import MiRutina from './pages/MiRutina';
+import EditarPerfil from './components/EditarPerfil'; // ✅ AÑADIDO
 
 const PrivateRoute = ({ children, isAuthenticated }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
@@ -62,6 +63,13 @@ function App() {
     localStorage.removeItem('userRole');
   };
 
+  // ✅ AÑADIDO: Función para manejar actualización del perfil
+  const handleProfileUpdate = (updatedData) => {
+    console.log('Perfil actualizado:', updatedData);
+    // Aquí puedes actualizar el estado global si es necesario
+    // Por ejemplo, si quieres actualizar el nombre en el dashboard
+  };
+
   // Mientras cargamos la autenticación mostramos un mensaje o spinner
   if (loadingAuth) {
     return (
@@ -115,6 +123,23 @@ function App() {
                 <TrainerDashboardPage token={auth.token} onLogout={handleLogout} />
               ) : (
                 <Navigate to="/login" />
+              )}
+            </PrivateRoute>
+          }
+        />
+
+        {/* ✅ AÑADIDO: Ruta protegida Editar Perfil */}
+        <Route
+          path="/editar-perfil"
+          element={
+            <PrivateRoute isAuthenticated={auth.isAuthenticated}>
+              {auth.role === 'usuario' ? (
+                <EditarPerfil 
+                  token={auth.token} 
+                  onUpdate={handleProfileUpdate} 
+                />
+              ) : (
+                <Navigate to="/dashboard" />
               )}
             </PrivateRoute>
           }

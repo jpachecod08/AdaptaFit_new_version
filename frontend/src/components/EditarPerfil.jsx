@@ -63,7 +63,7 @@ const EditarPerfil = ({ token, onUpdate }) => {
     const fetchUserProfile = async () => {
       try {
         setLoadingProfile(true);
-        const response = await axios.get('http://localhost:8000/api/users/profile/', {
+        const response = await axios.get(`${API_URL}/api/users/profile/`, {
           headers: {
             Authorization: `Token ${token}`,
           },
@@ -153,7 +153,7 @@ const handleSubmit = async (e) => {
 
     // ✅ CORREGIDO: Usar la URL correcta que SÍ existe
     const response = await axios.put(
-      'http://localhost:8000/api/users/profile/',  // ← CAMBIA ESTA LÍNEA
+      `${API_URL}/api/users/profile/`,  // ← CAMBIA ESTA LÍNEA
       payload,
       {
         headers: {

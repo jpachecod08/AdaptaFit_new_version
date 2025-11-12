@@ -113,3 +113,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 AUTH_USER_MODEL = 'users.CustomUser'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'jpachecod@unicartagena.edu.co'  # Tu email
+EMAIL_HOST_PASSWORD = 'xmek vldd scfn wulo'  # La contraseña de aplicación
+DEFAULT_FROM_EMAIL = 'AdaptaFit <jpachecod@unicartagena.edu.co>'

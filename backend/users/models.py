@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
+import secrets
 
 # ---------- MANAGER ----------
 class CustomUserManager(BaseUserManager):
@@ -69,3 +72,44 @@ class TrainerProfile(models.Model):
 
     def __str__(self):
         return f'Perfil de entrenador de {self.user.email}'
+    
+# ---------- PASSWORD RESET CODE ----------
+class PasswordResetCode(models.Model):
+    email = models.EmailField()
+    code = models.CharField(max_length=6)
+    user_id = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    verified = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'password_reset_codes'
+    
+    def is_expired(self):
+        return timezone.now() > self.created_at + timedelta(minutes=15)
+    
+    @classmethod
+    def generate_code(cls, email, user_id):
+        # Eliminar códigos existentes para este email
+        cls.objects.filter(email=email).delete()
+        
+        # Generar nuevo código
+        code = ''.join(secrets.choice('0123456789') for _ in range(6))
+        
+        # Crear nuevo registro
+        return cls.objects.create(
+            email=email,
+            code=code,
+            user_id=user_id
+        )
+    
+    @classmethod
+    def get_valid_code(cls, email, code):
+        try:
+            reset_code = cls.objects.get(email=email, code=code)
+            if not reset_code.is_expired():
+                return reset_code
+            # Eliminar si está expirado
+            reset_code.delete()
+        except cls.DoesNotExist:
+            pass
+        return None

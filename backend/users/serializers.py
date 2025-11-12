@@ -32,10 +32,16 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role',
             'profile',
         ]
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'role': {'read_only': True}  # El rol no debería poder modificarse
+        }
 
     def validate_email(self, value):
-        if CustomUser.objects.filter(email=value).exists():
+        # Excluir el usuario actual al validar el email (para updates)
+        if self.instance and CustomUser.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError("Este correo electrónico ya está registrado.")
+        elif not self.instance and CustomUser.objects.filter(email=value).exists():
             raise serializers.ValidationError("Este correo electrónico ya está registrado.")
         return value
 
@@ -45,6 +51,30 @@ class CustomUserSerializer(serializers.ModelSerializer):
         user = CustomUser.objects.create_user(password=password, **validated_data)
         UserProfile.objects.create(user=user, **profile_data)  # Creamos perfil con los datos
         return user
+
+    def update(self, instance, validated_data):
+        # Manejar datos del profile anidado
+        profile_data = validated_data.pop('profile', None)
+        
+        # Actualizar campos básicos del usuario
+        instance.nombre = validated_data.get('nombre', instance.nombre)
+        instance.email = validated_data.get('email', instance.email)
+        
+        # Manejar contraseña si se proporciona
+        password = validated_data.get('password')
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        
+        # Actualizar profile si existe
+        if profile_data and hasattr(instance, 'profile'):
+            profile = instance.profile
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+        
+        return instance
 
 
 # Serializador para el registro de entrenadores.
@@ -105,8 +135,6 @@ class AuthTokenSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
     
-
-# En tu archivo serializers.py
 
 # En tu archivo serializers.py
 

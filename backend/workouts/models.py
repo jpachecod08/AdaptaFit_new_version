@@ -1,5 +1,7 @@
+# workouts/models.py
 from django.db import models
-from django.conf import settings
+from django.conf import settings  # ¡IMPORTANTE!
+from django.contrib.auth.models import User
 
 class Exercise(models.Model):
     name = models.CharField(max_length=200)
@@ -22,7 +24,7 @@ class WorkoutPlan(models.Model):
         return f'{self.title} - {self.user.email}'
 
 class WorkoutDay(models.Model):
-    plan = models.ForeignKey(WorkoutPlan, on_delete=models.CASCADE, related_name='days')
+    plan = models.ForeignKey(WorkoutPlan, on_delete=models.CASCADE, related_name='workout_days')  # Cambiado a workout_days
     day_index = models.IntegerField()  # orden
     name = models.CharField(max_length=100, blank=True)
 
@@ -30,7 +32,7 @@ class WorkoutDay(models.Model):
         return f'{self.plan.title} - {self.name or self.day_index}'
 
 class WorkoutExercise(models.Model):
-    day = models.ForeignKey(WorkoutDay, on_delete=models.CASCADE, related_name='exercises')
+    day = models.ForeignKey(WorkoutDay, on_delete=models.CASCADE, related_name='workout_exercises')  # Cambiado a workout_exercises
     exercise = models.ForeignKey(Exercise, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=200)
     sets = models.IntegerField(null=True, blank=True)
@@ -48,3 +50,18 @@ class WorkoutHistory(models.Model):
     completed = models.BooleanField(default=False)
     rpe = models.IntegerField(null=True, blank=True)  # 1-10
     comments = models.TextField(blank=True)
+
+
+class UserProgress(models.Model):
+    # CORREGIDO: usar settings.AUTH_USER_MODEL en lugar de User directamente
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    exercise = models.ForeignKey('Exercise', on_delete=models.CASCADE)
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['user', 'exercise']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.exercise.name} - {self.completed}"
