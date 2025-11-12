@@ -36,7 +36,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 // import {API_URL} from '../config'
 
-const API_URL = 'https://adaptafit.onrender.com';
+const API_URL = 'https://adaptafit.onrender.com'; //dato nuevo
 console.log('🔧 Usando API_URL:', API_URL);
 
 const EditarPerfil = ({ token, onUpdate }) => {
