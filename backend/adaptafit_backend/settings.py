@@ -65,12 +65,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'adaptafit_backend.wsgi.application'
 
-# DATABASES - PostgreSQL para Render
+# DATABASES - PostgreSQL para Render (CORREGIDO)
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL', 'postgresql://adaptafit_db_user:STB1m8fhTbWWu7dcF23HwgqohgWwBl8E@dpg-d4a7qgh5pdvs73e1uceg-a/adaptafit_db'),
-        conn_max_age=600,
-        conn_health_checks=True,
+        conn_max_age=600
     )
 }
 
