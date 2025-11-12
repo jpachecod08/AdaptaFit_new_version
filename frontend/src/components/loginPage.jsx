@@ -357,7 +357,7 @@ const handleResetPassword = async () => {
   } finally {
     setRecoveryLoading(false);
   }
-};
+};//corregido
 
   // Tamaños responsive
   const containerMaxWidth = isMobile ? 'xs' : isTablet ? 'sm' : 'sm';
