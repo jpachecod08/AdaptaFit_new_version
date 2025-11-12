@@ -53,8 +53,10 @@ import {
   CheckCircle,
   CheckCircle2,
 } from 'lucide-react';
-
+// import {API_URL} from '../config'
 import BuscarEntrenadores from './BuscarEntrenadores';
+const API_URL = 'https://adaptafit.onrender.com';
+console.log('🔧 Usando API_URL:', API_URL);
 
 // 🎨 Theme-aware styled components
 const GlassCard = styled(Card)(({ theme }) => ({

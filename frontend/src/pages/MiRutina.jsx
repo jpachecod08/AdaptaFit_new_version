@@ -39,8 +39,9 @@ import {
 import axios from 'axios';
 
 // ✅ CONFIGURACIÓN CORREGIDA PARA NETLIFY
-import { API_URL } from '../config';
-
+// import { API_URL } from '../config';
+const API_URL = 'https://adaptafit.onrender.com';
+console.log('🔧 Usando API_URL:', API_URL);
 // Utilitarios de autenticación
 const getAuthToken = (navigate) => {
   const token = localStorage.getItem('authToken');
