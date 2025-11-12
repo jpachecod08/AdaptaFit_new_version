@@ -41,19 +41,23 @@ def password_reset_request(request):
         email = data.get('email')
         
         if not email:
-            return JsonResponse({'error': 'El correo electrónico es requerido'}, status=400)
+            response = JsonResponse({'error': 'El correo electrónico es requerido'}, status=400)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Verificar si el usuario existe
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             # Por seguridad, no revelamos si el email existe o no
-            return JsonResponse({'message': 'Si el email existe, se enviará un código de recuperación'})
+            response = JsonResponse({'message': 'Si el email existe, se enviará un código de recuperación'})
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Generar y guardar código
         reset_code = PasswordResetCode.generate_code(email, user.id)
         
-        # Enviar email (configura esto según tu servidor de email)
+        # Enviar email
         try:
             send_mail(
                 'Código de Recuperación - AdaptaFit',
@@ -65,17 +69,22 @@ def password_reset_request(request):
             print(f"[PASSWORD_RESET] Código {reset_code.code} enviado a {email}")
         except Exception as e:
             print(f"Error enviando email: {e}")
-            # Para desarrollo, devolvemos el código en la respuesta
-            return JsonResponse({
+            response = JsonResponse({
                 'message': 'Código de recuperación generado (email no enviado)',
                 'debug_code': reset_code.code  # Solo para desarrollo
             })
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
-        return JsonResponse({'message': 'Código de recuperación enviado'})
+        response = JsonResponse({'message': 'Código de recuperación enviado'})
+        response["Access-Control-Allow-Origin"] = "*"
+        return response
         
     except Exception as e:
         print(f"Error en password_reset_request: {e}")
-        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        response = JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        response["Access-Control-Allow-Origin"] = "*"
+        return response
 
 @csrf_exempt
 @require_POST
@@ -86,23 +95,31 @@ def password_reset_verify(request):
         code = data.get('code')
         
         if not email or not code:
-            return JsonResponse({'error': 'Email y código son requeridos'}, status=400)
+            response = JsonResponse({'error': 'Email y código son requeridos'}, status=400)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Verificar código en la base de datos
         reset_code = PasswordResetCode.get_valid_code(email, code)
         
         if not reset_code:
-            return JsonResponse({'error': 'Código expirado o inválido'}, status=400)
+            response = JsonResponse({'error': 'Código expirado o inválido'}, status=400)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Marcar código como verificado
         reset_code.verified = True
         reset_code.save()
         
-        return JsonResponse({'message': 'Código verificado correctamente'})
+        response = JsonResponse({'message': 'Código verificado correctamente'})
+        response["Access-Control-Allow-Origin"] = "*"
+        return response
         
     except Exception as e:
         print(f"Error en password_reset_verify: {e}")
-        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        response = JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        response["Access-Control-Allow-Origin"] = "*"
+        return response
 
 @csrf_exempt
 @require_POST
@@ -114,16 +131,22 @@ def password_reset_confirm(request):
         new_password = data.get('new_password')
         
         if not email or not code or not new_password:
-            return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
+            response = JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         if len(new_password) < 6:
-            return JsonResponse({'error': 'La contraseña debe tener al menos 6 caracteres'}, status=400)
+            response = JsonResponse({'error': 'La contraseña debe tener al menos 6 caracteres'}, status=400)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Verificar código en la base de datos
         reset_code = PasswordResetCode.get_valid_code(email, code)
         
         if not reset_code or not reset_code.verified:
-            return JsonResponse({'error': 'Código no verificado o inválido'}, status=400)
+            response = JsonResponse({'error': 'Código no verificado o inválido'}, status=400)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Actualizar contraseña del usuario
         try:
@@ -131,16 +154,22 @@ def password_reset_confirm(request):
             user.password = make_password(new_password)
             user.save()
         except User.DoesNotExist:
-            return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+            response = JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+            response["Access-Control-Allow-Origin"] = "*"
+            return response
         
         # Eliminar código usado
         reset_code.delete()
         
-        return JsonResponse({'message': 'Contraseña actualizada correctamente'})
+        response = JsonResponse({'message': 'Contraseña actualizada correctamente'})
+        response["Access-Control-Allow-Origin"] = "*"
+        return response
         
     except Exception as e:
         print(f"Error en password_reset_confirm: {e}")
-        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        response = JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        response["Access-Control-Allow-Origin"] = "*"
+        return response
 
 # ----------------------------------------------------------------------
 # VISTA DE LOGIN CORREGIDA
