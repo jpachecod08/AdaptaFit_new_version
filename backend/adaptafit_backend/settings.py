@@ -8,7 +8,14 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!x8@8f$8k^6#m&gv3b%2q
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+# ACTUALIZA ALLOWED_HOSTS
+ALLOWED_HOSTS = [
+    '.onrender.com', 
+    'localhost', 
+    '127.0.0.1',
+    'helpful-jalebi-63025e.netlify.app',
+    '.netlify.app'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -17,7 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',
+    'corsheaders',  # Asegúrate de que esté aquí
     'rest_framework',
     'rest_framework.authtoken',
     'users',
@@ -33,11 +40,12 @@ REST_FRAMEWORK = {
     ],
 }
 
+# CORRIGE EL ORDEN DEL MIDDLEWARE - CORS debe estar arriba
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # DEBE SER EL PRIMERO
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -105,11 +113,41 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CONFIGURACIÓN CORS CORREGIDA - ELIGE UNA OPCIÓN:
+
+# OPCIÓN 1: Permitir todos los orígenes (RECOMENDADO)
 CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://*.vercel.app",
+# OPCIÓN 2: O especificar orígenes permitidos (comenta la línea de arriba y usa esta)
+# CORS_ALLOW_ALL_ORIGINS = False
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://localhost:5173",
+#     "https://helpful-jalebi-63025e.netlify.app",
+#     "https://*.netlify.app",
+#     "https://*.vercel.app",
+# ]
+
+# Configuración adicional importante
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 AUTH_USER_MODEL = 'users.CustomUser'
@@ -118,6 +156,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'jpachecod@unicartagena.edu.co'  # Tu email
-EMAIL_HOST_PASSWORD = 'xmek vldd scfn wulo'  # La contraseña de aplicación
+EMAIL_HOST_USER = 'jpachecod@unicartagena.edu.co'
+EMAIL_HOST_PASSWORD = 'xmek vldd scfn wulo'
 DEFAULT_FROM_EMAIL = 'AdaptaFit <jpachecod@unicartagena.edu.co>'
