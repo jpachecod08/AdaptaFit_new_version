@@ -82,8 +82,11 @@ DATABASES = {
         'PASSWORD': 'STB1m8fhTbWWu7dcF23HwgqohgWwBl8E',
         'HOST': 'dpg-d4a7qgh5pdvs73e1uceg-a',
         'PORT': '5432',
+        'CONN_MAX_AGE': 600,
     }
 }
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
