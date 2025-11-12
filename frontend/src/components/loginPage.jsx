@@ -249,111 +249,115 @@ const LoginPage = ({ onLogin }) => {
     return true;
   };
 
-  const handleSendRecoveryCode = async () => {
-    if (!validateRecoveryEmail()) return;
+  // Funciones para recuperación de contraseña - ACTUALIZADAS
+const handleSendRecoveryCode = async () => {
+  if (!validateRecoveryEmail()) return;
 
-    setRecoveryLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/api/users/password-reset/`, {
-        email: recoveryEmail,
-      });
+  setRecoveryLoading(true);
+  try {
+    // Usar Netlify Function como proxy
+    const response = await axios.post('/.netlify/functions/proxy-password-reset', {
+      email: recoveryEmail,
+    });
 
-      setSnackbarMessage('Código de recuperación enviado a tu correo');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setRecoveryStep(1);
-    } catch (error) {
-      console.error('Error enviando código:', error);
-      const errorMessage = error.response?.data?.error || 'Error al enviar el código de recuperación';
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setRecoveryLoading(false);
-    }
-  };
+    setSnackbarMessage('Código de recuperación enviado a tu correo');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+    setRecoveryStep(1);
+  } catch (error) {
+    console.error('Error enviando código:', error);
+    const errorMessage = error.response?.data?.error || 'Error al enviar el código de recuperación';
+    setSnackbarMessage(errorMessage);
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+  } finally {
+    setRecoveryLoading(false);
+  }
+};
 
-  const handleVerifyCode = async () => {
-    if (!recoveryCode) {
-      setSnackbarMessage('Por favor ingresa el código de verificación');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      return;
-    }
+const handleVerifyCode = async () => {
+  if (!recoveryCode) {
+    setSnackbarMessage('Por favor ingresa el código de verificación');
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+    return;
+  }
 
-    setRecoveryLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/api/users/password-reset/verify/`, {
-        email: recoveryEmail,
-        code: recoveryCode,
-      });
+  setRecoveryLoading(true);
+  try {
+    // Usar Netlify Function como proxy
+    const response = await axios.post('/.netlify/functions/proxy-password-verify', {
+      email: recoveryEmail,
+      code: recoveryCode,
+    });
 
-      setSnackbarMessage('Código verificado correctamente');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setRecoveryStep(2);
-    } catch (error) {
-      console.error('Error verificando código:', error);
-      const errorMessage = error.response?.data?.error || 'Código inválido o expirado';
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setRecoveryLoading(false);
-    }
-  };
+    setSnackbarMessage('Código verificado correctamente');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+    setRecoveryStep(2);
+  } catch (error) {
+    console.error('Error verificando código:', error);
+    const errorMessage = error.response?.data?.error || 'Código inválido o expirado';
+    setSnackbarMessage(errorMessage);
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+  } finally {
+    setRecoveryLoading(false);
+  }
+};
 
-  const handleResetPassword = async () => {
-    if (!newPassword || !confirmPassword) {
-      setSnackbarMessage('Por favor completa todos los campos');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      return;
-    }
+const handleResetPassword = async () => {
+  if (!newPassword || !confirmPassword) {
+    setSnackbarMessage('Por favor completa todos los campos');
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+    return;
+  }
 
-    if (newPassword.length < 6) {
-      setSnackbarMessage('La contraseña debe tener al menos 6 caracteres');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      return;
-    }
+  if (newPassword.length < 6) {
+    setSnackbarMessage('La contraseña debe tener al menos 6 caracteres');
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+    return;
+  }
 
-    if (newPassword !== confirmPassword) {
-      setSnackbarMessage('Las contraseñas no coinciden');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      return;
-    }
+  if (newPassword !== confirmPassword) {
+    setSnackbarMessage('Las contraseñas no coinciden');
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+    return;
+  }
 
-    setRecoveryLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/api/users/password-reset/confirm/`, {
-        email: recoveryEmail,
-        code: recoveryCode,
-        new_password: newPassword,
-      });
+  setRecoveryLoading(true);
+  try {
+    // Usar Netlify Function como proxy
+    const response = await axios.post('/.netlify/functions/proxy-password-confirm', {
+      email: recoveryEmail,
+      code: recoveryCode,
+      new_password: newPassword,
+    });
 
-      setSnackbarMessage('Contraseña restablecida correctamente');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setForgotPasswordOpen(false);
-      
-      // Limpiar campos
-      setRecoveryEmail('');
-      setRecoveryCode('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setRecoveryStep(0);
-    } catch (error) {
-      console.error('Error restableciendo contraseña:', error);
-      const errorMessage = error.response?.data?.error || 'Error al restablecer la contraseña';
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setRecoveryLoading(false);
-    }
-  };
+    setSnackbarMessage('Contraseña restablecida correctamente');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+    setForgotPasswordOpen(false);
+    
+    // Limpiar campos
+    setRecoveryEmail('');
+    setRecoveryCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setRecoveryStep(0);
+  } catch (error) {
+    console.error('Error restableciendo contraseña:', error);
+    const errorMessage = error.response?.data?.error || 'Error al restablecer la contraseña';
+    setSnackbarMessage(errorMessage);
+    setSnackbarSeverity('error');
+    setSnackbarOpen(true);
+  } finally {
+    setRecoveryLoading(false);
+  }
+};
 
   // Tamaños responsive
   const containerMaxWidth = isMobile ? 'xs' : isTablet ? 'sm' : 'sm';
