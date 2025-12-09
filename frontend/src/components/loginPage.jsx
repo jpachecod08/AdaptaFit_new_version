@@ -40,7 +40,8 @@ import {
 } from '@mui/icons-material';
 // import {API_URL} from '../config'
 import { Link, useNavigate } from 'react-router-dom';
-const API_URL = 'https://adaptafit.onrender.com';
+//const API_URL = 'https://adaptafit.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL;
 console.log('🔧 Usando API_URL:', API_URL);
 
 const LoginPage = ({ onLogin }) => {

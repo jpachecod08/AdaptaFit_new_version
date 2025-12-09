@@ -44,7 +44,9 @@ import {
 // import {API_URL} from '../config'
 import { Link as MuiLink } from '@mui/material';
 import axios from 'axios';
-const API_URL = 'https://adaptafit.onrender.com';
+//const API_URL = 'https://adaptafit.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL;
+
 console.log('🔧 Usando API_URL:', API_URL);
 
 const RegisterPage = () => {

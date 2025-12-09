@@ -55,7 +55,9 @@ import {
 } from 'lucide-react';
 // import {API_URL} from '../config'
 import BuscarEntrenadores from './BuscarEntrenadores';
-const API_URL = 'https://adaptafit.onrender.com';
+// const API_URL = 'https://adaptafit.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL;
+
 console.log('🔧 Usando API_URL:', API_URL);
 
 // 🎨 Theme-aware styled components

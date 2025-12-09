@@ -1,22 +1,23 @@
 import os
 from pathlib import Path
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!x8@8f$8k^6#m&gv3b%2q#9t+7w!z5*yu2a@4$6r&n^c#1p(9s')
+# -----------------------------
+#       CONFIGURACIÓN BASE
+# -----------------------------
+SECRET_KEY = 'django-insecure-!x8@8f$8k^6#m&gv3b%2q#9t+7w!z5*yu2a@4$6r&n^c#1p(9s'
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = True
 
-# ACTUALIZA ALLOWED_HOSTS
 ALLOWED_HOSTS = [
-    '.onrender.com', 
-    'localhost', 
+    'localhost',
     '127.0.0.1',
-    'helpful-jalebi-63025e.netlify.app',
-    '.netlify.app'
 ]
 
+# -----------------------------
+#         APLICACIONES
+# -----------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,13 +25,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',  # Asegúrate de que esté aquí
+
+    # Terceros
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
+
+    # Apps del proyecto
     'users',
     'workouts',
 ]
 
+# -----------------------------
+#  CONFIGURACIÓN DRF
+# -----------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -40,11 +48,12 @@ REST_FRAMEWORK = {
     ],
 }
 
-# CORRIGE EL ORDEN DEL MIDDLEWARE - CORS debe estar arriba
+# -----------------------------
+#       MIDDLEWARE
+# -----------------------------
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # DEBE SER EL PRIMERO
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -55,6 +64,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'adaptafit_backend.urls'
 
+# -----------------------------
+#        TEMPLATES (ADMIN)
+# -----------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -73,85 +85,58 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'adaptafit_backend.wsgi.application'
 
-# DATABASES - Para psycopg3
+# -----------------------------
+#   BASE DE DATOS LOCAL DESARROLLO
+# -----------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'adaptafit_db',
-        'USER': 'adaptafit_db_user',
-        'PASSWORD': 'STB1m8fhTbWWu7dcF23HwgqohgWwBl8E',
-        'HOST': 'dpg-d4a7qgh5pdvs73e1uceg-a',
+        'USER': 'postgres',       # Usuario local (ajústalo si es otro)
+        'PASSWORD': '1234',       # Contraseña local
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# Si prefieres usar SQLite durante desarrollo, usa este en lugar del de arriba:
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
+# -----------------------------
+#        INTERNACIONALIZACIÓN
+# -----------------------------
 LANGUAGE_CODE = 'es-mx'
-
 TIME_ZONE = 'America/Mexico_City'
 
 USE_I18N = True
-
 USE_TZ = True
 
+# -----------------------------
+#         ARCHIVOS ESTÁTICOS
+# -----------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CONFIGURACIÓN CORS CORREGIDA - ELIGE UNA OPCIÓN:
-
-# OPCIÓN 1: Permitir todos los orígenes (RECOMENDADO)
+# -----------------------------
+#   CORS PARA DESARROLLO
+# -----------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 
-# OPCIÓN 2: O especificar orígenes permitidos (comenta la línea de arriba y usa esta)
-# CORS_ALLOW_ALL_ORIGINS = False
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://localhost:5173",
-#     "https://helpful-jalebi-63025e.netlify.app",
-#     "https://*.netlify.app",
-#     "https://*.vercel.app",
-# ]
-
-# Configuración adicional importante
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
+# -----------------------------
+#     USUARIO PERSONALIZADO
+# -----------------------------
 AUTH_USER_MODEL = 'users.CustomUser'
 
+# -----------------------------
+#        SMTP (Opcional)
+# -----------------------------
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587

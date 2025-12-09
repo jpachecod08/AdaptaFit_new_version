@@ -40,7 +40,10 @@ import axios from 'axios';
 
 // ✅ CONFIGURACIÓN CORREGIDA PARA NETLIFY
 // import { API_URL } from '../config';
-const API_URL = 'https://adaptafit.onrender.com';
+// const API_URL = 'https://adaptafit.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL;
+
+
 console.log('🔧 Usando API_URL:', API_URL);
 // Utilitarios de autenticación
 const getAuthToken = (navigate) => {
