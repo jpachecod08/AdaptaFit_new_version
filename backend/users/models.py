@@ -58,6 +58,15 @@ class UserProfile(models.Model):
     frecuencia = models.IntegerField(null=True, blank=True)
     lesiones = models.TextField(null=True, blank=True)
 
+    trainer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='clients_as_trainer',
+        verbose_name='Entrenador asignado'
+    )
+
     def __str__(self):
         return f'Perfil de {self.user.email}'
 
