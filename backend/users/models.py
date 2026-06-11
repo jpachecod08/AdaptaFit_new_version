@@ -58,6 +58,21 @@ class UserProfile(models.Model):
     frecuencia = models.IntegerField(null=True, blank=True)
     lesiones = models.TextField(null=True, blank=True)
 
+    TRAINING_TYPES = [
+        ('gym', 'Gimnasio (pesas/máquinas)'),
+        ('calisthenics', 'Calistenia (peso corporal)'),
+        ('cardio', 'Aeróbico (correr, nadar, bici)'),
+        ('yoga', 'Yoga / Pilates'),
+        ('mixed', 'Mixto (combinado)'),
+    ]
+    training_type = models.CharField(
+        max_length=20, 
+        choices=TRAINING_TYPES, 
+        default='calisthenics',
+        blank=False,
+        verbose_name='Tipo de entrenamiento preferido'
+    )
+
     trainer = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 

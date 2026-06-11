@@ -978,6 +978,48 @@ const UserDashboardPage = ({ token, onLogout }) => {
                 </GlassCard>
               </Grid>
 
+<Grid item xs={12}>
+  <GlassCard>
+    <CardContent sx={{ p: 3, textAlign: 'center' }}>
+      <FeatureIcon color="#4facfe" sx={{ mx: 'auto' }}>
+        <Users size={32} />
+      </FeatureIcon>
+      <Typography variant="h6" fontWeight="600" gutterBottom>
+        ¿Necesitas un Entrenador?
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3, minHeight: 60 }}>
+        Conéctate con entrenadores certificados que pueden personalizar tu rutina y guiarte paso a paso
+      </Typography>
+      
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <PrimaryButton
+          onClick={handleShowTrainers}
+          startIcon={<Users size={20} />}
+          fullWidth
+        >
+          Buscar Entrenadores
+        </PrimaryButton>
+        
+        <SecondaryButton
+          onClick={() => alert('Próximamente: Sistema de videollamadas integrado')}
+          startIcon={<Video size={20} />}
+          fullWidth
+        >
+          Ver Demo de Videollamada
+        </SecondaryButton>
+      </Box>
+      
+      <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${alpha('#000', 0.1)}` }}>
+        <Typography variant="caption" color="text.secondary">
+          ✅ Selección personalizada<br/>
+          ✅ Ajustes en tiempo real<br/>
+          ✅ Sesiones por videollamada
+        </Typography>
+      </Box>
+    </CardContent>
+  </GlassCard>
+</Grid>
+
               {/* Progreso Semanal */}
               <Grid item xs={12}>
                 <GlassCard>

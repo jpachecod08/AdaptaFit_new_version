@@ -21,8 +21,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'experiencia', 
             'frecuencia', 
             'lesiones',
-            'trainer',  # ← Agrega este campo
-            'trainer_info'  # ← Campo adicional para información del entrenador
+            'trainer', 
+            'trainer_info',
+            'training_type' 
         ]
         read_only_fields = ['trainer_info']
     

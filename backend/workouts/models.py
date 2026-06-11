@@ -19,6 +19,7 @@ class WorkoutPlan(models.Model):
     generated_at = models.DateTimeField(auto_now_add=True)
     source = models.CharField(max_length=50, default='rules+llm')
     notes = models.TextField(blank=True)
+    last_modified = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.title} - {self.user.email}'

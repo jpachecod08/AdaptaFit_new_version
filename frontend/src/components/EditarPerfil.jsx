@@ -30,13 +30,12 @@ import {
   Target,
   Activity,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Dumbbell,
 } from 'lucide-react';
 import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
-// import {API_URL} from '../config'
 
-// const API_URL = 'https://adaptafit.onrender.com'; //dato nuevo
 const API_URL = import.meta.env.VITE_API_URL;
 
 console.log('🔧 Usando API_URL:', API_URL);
@@ -53,6 +52,7 @@ const EditarPerfil = ({ token, onUpdate }) => {
     experiencia: '',
     frecuencia: '',
     lesiones: '',
+    training_type: '', // NUEVO CAMPO
   });
 
   const [loading, setLoading] = useState(false);
@@ -63,6 +63,14 @@ const EditarPerfil = ({ token, onUpdate }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const navigate = useNavigate();
+
+  const trainingTypeOptions = [
+  { value: 'gym', label: '🏋️ Gimnasio (pesas/máquinas)' },
+  { value: 'calisthenics', label: '💪 Calistenia (peso corporal)' },
+  { value: 'cardio', label: '❤️ Aeróbico (correr, nadar, bici)' },
+  { value: 'yoga', label: '🧘 Yoga / Pilates' },
+  { value: 'mixed', label: '🔄 Mixto (combinado)' },
+];
 
   // Cargar datos del perfil al montar el componente
   useEffect(() => {
@@ -78,17 +86,14 @@ const EditarPerfil = ({ token, onUpdate }) => {
         const userData = response.data;
         console.log('Datos recibidos del backend:', userData);
         
-        // Los datos del perfil están en userData.profile
         const profileData = userData.profile || {};
         
-        // Formatear fecha si existe
         let fechaFormateada = '';
         if (profileData.fechaNacimiento) {
           const fecha = new Date(profileData.fechaNacimiento);
           fechaFormateada = fecha.toISOString().split('T')[0];
         }
 
-        // Mapear correctamente los datos desde profile
         setFormData({
           nombre: userData.nombre || '',
           email: userData.email || '',
@@ -100,6 +105,7 @@ const EditarPerfil = ({ token, onUpdate }) => {
           experiencia: profileData.experiencia || '',
           frecuencia: profileData.frecuencia || '',
           lesiones: profileData.lesiones || '',
+          training_type: profileData.training_type || 'calisthenics', // NUEVO: valor por defecto
         });
 
       } catch (err) {
@@ -133,91 +139,91 @@ const EditarPerfil = ({ token, onUpdate }) => {
     setSnackbarOpen(false);
     setError(null);
   };
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
 
-  try {
-    // Preparar datos para enviar
-    const payload = {
-      nombre: formData.nombre,
-      email: formData.email,
-      profile: {
-        fechaNacimiento: formData.fechaNacimiento,
-        genero: formData.genero,
-        altura: formData.altura ? parseInt(formData.altura) : null,
-        peso: formData.peso ? parseFloat(formData.peso) : null,
-        objetivo: formData.objetivo,
-        experiencia: formData.experiencia,
-        frecuencia: formData.frecuencia ? parseInt(formData.frecuencia) : null,
-        lesiones: formData.lesiones,
-      }
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-    console.log('Enviando datos al backend:', payload);
-
-    // ✅ CORREGIDO: Usar la URL correcta que SÍ existe
-    const response = await axios.put(
-      `${API_URL}/api/users/profile/`,  // ← CAMBIA ESTA LÍNEA
-      payload,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      }
-    );
-
-    if (response.status === 200) {
-      showSnackbar('success', 'Perfil actualizado exitosamente');
-      setSuccess(true);
-      
-      if (onUpdate) {
-        onUpdate(response.data);
-      }
-
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
-    }
-  } catch (err) {
-    console.error('Error al actualizar perfil:', err);
-    console.error('Detalles del error:', err.response?.data);
-    
-    let errorMessage = 'Error al actualizar el perfil.';
-    
-    if (err.response?.data) {
-      const errorData = err.response.data;
-      if (typeof errorData === 'object') {
-        const errors = [];
-        if (errorData.profile) {
-          Object.values(errorData.profile).forEach(error => {
-            if (Array.isArray(error)) {
-              errors.push(...error);
-            } else {
-              errors.push(error);
-            }
-          });
-        } else {
-          Object.values(errorData).forEach(error => {
-            if (Array.isArray(error)) {
-              errors.push(...error);
-            } else {
-              errors.push(error);
-            }
-          });
+    try {
+      const payload = {
+        nombre: formData.nombre,
+        email: formData.email,
+        profile: {
+          fechaNacimiento: formData.fechaNacimiento,
+          genero: formData.genero,
+          altura: formData.altura ? parseInt(formData.altura) : null,
+          peso: formData.peso ? parseFloat(formData.peso) : null,
+          objetivo: formData.objetivo,
+          experiencia: formData.experiencia,
+          frecuencia: formData.frecuencia ? parseInt(formData.frecuencia) : null,
+          lesiones: formData.lesiones,
+          training_type: formData.training_type, // NUEVO: enviar al backend
         }
-        errorMessage = errors[0] || errorMessage;
-      } else if (typeof errorData === 'string') {
-        errorMessage = errorData;
+      };
+
+      console.log('Enviando datos al backend:', payload);
+
+      const response = await axios.put(
+        `${API_URL}/api/users/profile/`,
+        payload,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        showSnackbar('success', 'Perfil actualizado exitosamente');
+        setSuccess(true);
+        
+        if (onUpdate) {
+          onUpdate(response.data);
+        }
+
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
       }
+    } catch (err) {
+      console.error('Error al actualizar perfil:', err);
+      console.error('Detalles del error:', err.response?.data);
+      
+      let errorMessage = 'Error al actualizar el perfil.';
+      
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'object') {
+          const errors = [];
+          if (errorData.profile) {
+            Object.values(errorData.profile).forEach(error => {
+              if (Array.isArray(error)) {
+                errors.push(...error);
+              } else {
+                errors.push(error);
+              }
+            });
+          } else {
+            Object.values(errorData).forEach(error => {
+              if (Array.isArray(error)) {
+                errors.push(...error);
+              } else {
+                errors.push(error);
+              }
+            });
+          }
+          errorMessage = errors[0] || errorMessage;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      }
+      
+      showSnackbar('error', errorMessage);
+    } finally {
+      setLoading(false);
     }
-    
-    showSnackbar('error', errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleCancel = () => {
     navigate('/dashboard');
@@ -293,7 +299,7 @@ const handleSubmit = async (e) => {
           </Card>
         </Box>
 
-        {/* Formulario - Ahora con altura completa */}
+        {/* Formulario */}
         <Paper 
           elevation={2} 
           sx={{ 
@@ -459,6 +465,28 @@ const handleSubmit = async (e) => {
                     margin="normal"
                     InputProps={{ inputProps: { min: 1, max: 7 } }}
                   />
+                </Grid>
+                
+                {/* NUEVO CAMPO: Tipo de entrenamiento */}
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Tipo de entrenamiento</InputLabel>
+                    <Select 
+                      name="training_type" 
+                      value={formData.training_type} 
+                      onChange={handleChange}
+                      label="Tipo de entrenamiento"
+                    >
+                      {trainingTypeOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {option.icon}
+                            <span>{option.label}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
 
