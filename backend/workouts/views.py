@@ -824,21 +824,21 @@ def generar_y_guardar_plan(user):
         print(f"[PLAN] No existe perfil para usuario {user.id}")
         return None
 
-    campos_requeridos = {
-        'fechaNacimiento': 'Fecha de nacimiento',
-        'altura': 'Altura',
-        'peso': 'Peso',
-        'objetivo': 'Objetivo',
-        'experiencia': 'Experiencia',
-        'frecuencia': 'Frecuencia'
-    }
-    
-    faltantes = [nombre for campo, nombre in campos_requeridos.items() 
-                 if not getattr(profile, campo, None)]
-    
-    if faltantes:
-        print(f"[PLAN] Campos faltantes: {', '.join(faltantes)}")
-        return None
+    # Asegurar que los campos mínimos necesarios tengan valores válidos
+    # (no bloquear la generación por datos físicos opcionales como
+    # fechaNacimiento/altura/peso, que el generador no requiere para armar la rutina)
+    if not profile.objetivo:
+        profile.objetivo = 'general'
+    if not profile.experiencia:
+        profile.experiencia = 'principiante'
+    if not profile.frecuencia:
+        profile.frecuencia = 3
+    if not getattr(profile, 'training_type', None):
+        profile.training_type = 'calisthenics'
+
+    print(f"[PLAN] Perfil listo para generar rutina "
+          f"(objetivo={profile.objetivo}, experiencia={profile.experiencia}, "
+          f"frecuencia={profile.frecuencia})")
 
     rutina_data = generar_rutina_adaptativa(profile)
     
