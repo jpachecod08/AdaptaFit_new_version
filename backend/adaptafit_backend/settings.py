@@ -149,6 +149,8 @@ _CORS_DEFAULT = [
     'http://127.0.0.1:5173',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'https://*.netlify.app',
+    'https://adaptafit.netlify.app',
 ]
 _cors_env = os.environ.get('DJANGO_CORS_ORIGINS', '')
 if _cors_env:
