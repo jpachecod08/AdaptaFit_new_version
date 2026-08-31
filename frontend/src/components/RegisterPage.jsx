@@ -74,7 +74,33 @@ const RegisterPage = () => {
         ? '/api/users/register/trainer/'
         : '/api/users/register/user/';
 
-    await axios.post(`${API_URL}${endpoint}`, formData);
+    // Construir el payload según la estructura que espera el backend
+    const payload =
+      role === 'entrenador'
+        ? {
+            nombre: formData.nombre,
+            email: formData.email,
+            password: formData.password,
+            trainer_profile: {
+              especialidad: formData.objetivos || '',
+              certificaciones: formData.experiencia || '',
+              biografia: formData.biografia || '',
+              telefono: formData.telefono || '',
+            },
+          }
+        : {
+            nombre: formData.nombre,
+            email: formData.email,
+            password: formData.password,
+            profile: {
+              objetivo: formData.objetivos || '',
+              experiencia: formData.nivel_fisico || '',
+              lesiones: formData.lesiones || '',
+              training_type: 'calisthenics',
+            },
+          };
+
+    await axios.post(`${API_URL}${endpoint}`, payload);
 
     setSnackbar({
       open: true,
