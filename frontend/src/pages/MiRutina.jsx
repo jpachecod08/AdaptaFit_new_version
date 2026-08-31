@@ -58,9 +58,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import axios from 'axios';
-
-// Configuración de API
-const API_URL = import.meta.env.VITE_API_URL || 'https://adaptafit.onrender.com';
+import { API_URL } from '../config';
 
 console.log('🔧 Usando API_URL:', API_URL);
 
@@ -841,17 +839,24 @@ const handleRegeneratePlan = async () => {
     return 'https://www.youtube.com/embed/IODxDxX7oi4';
   };
 
-  const handleVideoOpen = (exerciseName) => {
+  const handleVideoOpen = (ex) => {
+    const exerciseName = ex.name || ex;
     // Obtener el tipo de entrenamiento del perfil del usuario
     const trainingType = userProfile?.profile?.training_type || null;
-    const videoUrl = findExerciseVideo(exerciseName, trainingType);
+    
+    // 1) Prioridad 1: video exacto del backend (si existe)
+    let videoUrl = ex?.video_url || '';
+    // 2) Prioridad 2: si no hay video exacto, buscar con el mapeo curado local
+    if (!videoUrl) {
+      videoUrl = findExerciseVideo(exerciseName, trainingType);
+    }
     
     console.log(`📹 Abriendo video para: ${exerciseName} | Tipo: ${trainingType} | URL: ${videoUrl}`);
     
     setVideoDialog({
       open: true,
       exerciseName,
-      videoUrl
+      videoUrl: videoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(ex?.video_query || exerciseName)}`
     });
   };
 
@@ -1135,7 +1140,7 @@ const handleRegeneratePlan = async () => {
                     size="small" 
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleVideoOpen(ex.name);
+                      handleVideoOpen(ex);
                     }}
                     sx={{ color: 'primary.main' }}
                   >

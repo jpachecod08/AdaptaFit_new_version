@@ -1,4 +1,4 @@
-//[build]
+[build]
   base = "frontend"
   publish = "dist"
   command = "npm install && npm run build"
@@ -6,9 +6,8 @@
 [build.environment]
   VITE_API_URL = "https://adaptafit.onrender.com"
 
+# SPA Fallback: servir index.html para rutas del React Router (deep links)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-  

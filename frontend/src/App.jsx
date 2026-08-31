@@ -1,17 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import RegisterPage from './components/RegisterPage';
-import LoginPage from './components/loginPage';
-import UserDashboardPage from './components/UserDashboardPage';
-import TrainerDashboardPage from './components/TrainerDashboardPage';
-import MiRutina from './pages/MiRutina';
-import EditarPerfil from './components/EditarPerfil';
-import BuscarEntrenadores from './components/BuscarEntrenadores';
-import MiEntrenador from './components/MiEntrenador';
+
+// Code-splitting: cada página se carga bajo demanda (reduce el bundle inicial)
+const RegisterPage = lazy(() => import('./components/RegisterPage'));
+const LoginPage = lazy(() => import('./components/loginPage'));
+const UserDashboardPage = lazy(() => import('./components/UserDashboardPage'));
+const TrainerDashboardPage = lazy(() => import('./components/TrainerDashboardPage'));
+const MiRutina = lazy(() => import('./pages/MiRutina'));
+const EditarPerfil = lazy(() => import('./components/EditarPerfil'));
+const BuscarEntrenadores = lazy(() => import('./components/BuscarEntrenadores'));
+const MiEntrenador = lazy(() => import('./components/MiEntrenador'));
 
 const PrivateRoute = ({ children, isAuthenticated }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
+
+const PageLoader = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    width: '100vw',
+    backgroundColor: '#f5f5f5',
+    fontSize: '1.2rem',
+    color: '#555'
+  }}>
+    Cargando...
+  </div>
+);
 
 function App() {
   // Estado de autenticación global
@@ -107,9 +124,10 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Rutas públicas */}
-        <Route path="/register" element={<RegisterPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Rutas públicas */}
+          <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 
         {/* Ruta protegida dashboard */}
@@ -186,7 +204,8 @@ function App() {
         {/* Ruta por defecto */}
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

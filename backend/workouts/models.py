@@ -9,6 +9,8 @@ class Exercise(models.Model):
     equipment = models.CharField(max_length=200, blank=True)  # mancuernas, banda, ninguno
     description = models.TextField(blank=True)
     difficulty = models.IntegerField(null=True, blank=True)  # 1-5
+    video_url = models.URLField(blank=True)  # URL del video ilustrativo (YouTube/otros)
+    video_query = models.CharField(max_length=300, blank=True)  # query de búsqueda para el frontend
 
     def __str__(self):
         return self.name

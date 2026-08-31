@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const LoginPage = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +27,7 @@ const LoginPage = ({ onLogin }) => {
   setError("");
 
   try {
-    const loginUrl = 'http://127.0.0.1:8000/api/users/login/';
+    const loginUrl = `${API_URL}/api/users/login/`;
     console.log("Enviando login a:", loginUrl);
     
     // IMPORTANTE: El serializador AuthTokenSerializer espera 'email', no 'username'

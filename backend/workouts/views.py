@@ -12,6 +12,7 @@ from .serializers import WorkoutPlanSerializer
 from .models import WorkoutPlan, WorkoutDay, Exercise, UserProgress, WorkoutExercise
 from users.models import UserProfile
 from django.db.models import Count, Avg, Q
+from . import ai_engine
 
 print("=" * 60)
 print("🧠 ADAPTAFIT - SISTEMA ADAPTATIVO CON IA")
@@ -869,9 +870,26 @@ def generar_y_guardar_plan(user):
                         'category': 'fuerza',
                         'equipment': 'ninguno',
                         'description': ex.get("notes", ""),
-                        'difficulty': 3
+                        'difficulty': 3,
+                        'video_query': exercise_name,
                     }
                 )
+                
+                # Capa de IA (opcional, con fallback al motor determinista)
+                notas_ejercicio = ex.get("notes", "")
+                video_query = exercise_name
+                if ai_engine.ia_habilitada():
+                    enriquecido = ai_engine.enriquecer_ejercicio(
+                        exercise_name,
+                        lesiones=(profile.lesiones or ""),
+                        objetivo=(profile.objetivo or ""),
+                    )
+                    if enriquecido:
+                        notas_ejercicio = enriquecido.get("notas") or notas_ejercicio
+                        video_query = enriquecido.get("video_query") or exercise_name
+                        if exercise_obj.video_query != video_query or not exercise_obj.video_url:
+                            exercise_obj.video_query = video_query
+                            exercise_obj.save()
                 
                 WorkoutExercise.objects.create(
                     day=day_obj,
@@ -880,7 +898,7 @@ def generar_y_guardar_plan(user):
                     sets=ex.get("sets", 3),
                     reps=str(ex.get("reps", "8-12")),
                     rest_seconds=ex.get("rest_seconds", 60),
-                    notes=ex.get("notes", "")
+                    notes=notas_ejercicio
                 )
 
         print(f"[PLAN] ✅ Plan adaptativo guardado (ID: {plan.id})")
@@ -1225,6 +1243,10 @@ def actualizar_ejercicio(request, exercise_id):
             workout_exercise.rest_seconds = data['rest_seconds']
         if 'notes' in data:
             workout_exercise.notes = data['notes']
+        # Permitir al entrenador fijar la URL del video ilustrativo del ejercicio
+        if 'video_url' in data and workout_exercise.exercise:
+            workout_exercise.exercise.video_url = data['video_url'] or ''
+            workout_exercise.exercise.save()
         
         workout_exercise.save()
         plan = workout_exercise.day.plan
@@ -1241,6 +1263,7 @@ def actualizar_ejercicio(request, exercise_id):
                 'reps': workout_exercise.reps,
                 'rest_seconds': workout_exercise.rest_seconds,
                 'notes': workout_exercise.notes,
+                'video_url': workout_exercise.exercise.video_url if workout_exercise.exercise else '',
             }
         })
     except WorkoutExercise.DoesNotExist:

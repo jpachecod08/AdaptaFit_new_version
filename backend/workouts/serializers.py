@@ -2,9 +2,22 @@ from rest_framework import serializers
 from .models import Exercise, WorkoutPlan, WorkoutDay, WorkoutExercise, WorkoutHistory
 
 class WorkoutExerciseSerializer(serializers.ModelSerializer):
+    video_url = serializers.SerializerMethodField()
+    video_query = serializers.SerializerMethodField()
+
     class Meta:
         model = WorkoutExercise
-        fields = ['id', 'name', 'sets', 'reps', 'rest_seconds', 'notes']
+        fields = ['id', 'name', 'sets', 'reps', 'rest_seconds', 'notes', 'video_url', 'video_query']
+
+    def get_video_url(self, obj):
+        if obj.exercise and obj.exercise.video_url:
+            return obj.exercise.video_url
+        return ''
+
+    def get_video_query(self, obj):
+        if obj.exercise and obj.exercise.video_query:
+            return obj.exercise.video_query
+        return obj.name
 
 class WorkoutDaySerializer(serializers.ModelSerializer):
     # ✅ CORREGIDO

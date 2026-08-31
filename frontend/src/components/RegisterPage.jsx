@@ -30,8 +30,7 @@ import {
   MedicalServices,
 } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from '../config';
 
 const RegisterPage = () => {
   const navigate = useNavigate();

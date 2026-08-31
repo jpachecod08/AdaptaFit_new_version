@@ -53,10 +53,8 @@ import {
   CheckCircle,
   CheckCircle2,
 } from 'lucide-react';
-// import {API_URL} from '../config'
+import { API_URL } from '../config';
 import BuscarEntrenadores from './BuscarEntrenadores';
-// const API_URL = 'https://adaptafit.onrender.com';
-const API_URL = import.meta.env.VITE_API_URL;
 
 console.log('🔧 Usando API_URL:', API_URL);
 
@@ -449,7 +447,7 @@ const UserDashboardPage = ({ token, onLogout }) => {
   const handleCompleteWorkout = async () => {
     try {
       const response = await axios.post(
-       `${API_URL}/api/workouts/complete-workout/ `,
+       `${API_URL}/api/workouts/complete-workout/`,
         {
           workout_id: todayWorkout?.id,
           completed: true

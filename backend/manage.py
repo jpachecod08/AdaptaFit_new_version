@@ -3,9 +3,12 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
 
 def main():
     """Run administrative tasks."""
+    load_dotenv()  # Carga variables de entorno desde backend/.env si existe
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'adaptafit_backend.settings')
     try:
         from django.core.management import execute_from_command_line
