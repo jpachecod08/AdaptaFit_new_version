@@ -149,13 +149,17 @@ _CORS_DEFAULT = [
     'http://127.0.0.1:5173',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'https://*.netlify.app',
     'https://adaptafit.netlify.app',
+    'https://helpful-jalebi-63025e.netlify.app',
 ]
 _cors_env = os.environ.get('DJANGO_CORS_ORIGINS', '')
 if _cors_env:
     _CORS_DEFAULT.extend([o.strip() for o in _cors_env.split(',') if o.strip()])
 CORS_ALLOWED_ORIGINS = list(dict.fromkeys(_CORS_DEFAULT))
+# Cualquier subdominio de netlify.app queda permitido (nombre generado por Netlify)
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://[a-z0-9-]+\.netlify\.app$',
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # -----------------------------
