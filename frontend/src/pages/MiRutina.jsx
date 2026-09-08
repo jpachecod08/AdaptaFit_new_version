@@ -515,7 +515,8 @@ const MiRutina = () => {
           }
           
           setPlan(planData);
-          setLastUpdated(planData.last_modified || planData.generated_at);
+          const nuevoLastModified = response.data.last_modified || planData.last_modified || planData.generated_at;
+          setLastUpdated(nuevoLastModified);
           setPlanModified(true);
           
           // Recargar ejercicios completados
@@ -537,7 +538,6 @@ const MiRutina = () => {
           
           // Solo mostrar notificación si NO es el entrenador quien hizo los cambios
           // y si la modificación aún no ha sido notificada (evita notificaciones repetidas).
-          const nuevoLastModified = planData.last_modified || planData.generated_at;
           if (!isTrainer && nuevoLastModified !== lastNotifiedRef.current) {
             lastNotifiedRef.current = nuevoLastModified;
             setSnackbar({
