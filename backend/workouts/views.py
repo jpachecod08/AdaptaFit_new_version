@@ -322,9 +322,19 @@ def obtener_base_ejercicios(tipo_entrenamiento, nivel):
                     {"name": "Caminata", "sets": 1, "reps": "20 minutos", "rest": 0, "notes": "Ritmo cómodo"},
                     {"name": "Trote suave", "sets": 1, "reps": "15 minutos", "rest": 0, "notes": "Puedes hablar mientras trotas"},
                     {"name": "Bicicleta", "sets": 1, "reps": "20 minutos", "rest": 0, "notes": "Resistencia baja"},
+                    {"name": "Marcha en el lugar", "sets": 3, "reps": "30 segundos", "rest": 30, "notes": "Eleva bien las rodillas"},
+                    {"name": "Jumping jacks suaves", "sets": 3, "reps": "20 segundos", "rest": 40, "notes": "Ritmo moderado"},
+                    {"name": "Step touch", "sets": 3, "reps": "30 segundos", "rest": 30, "notes": "Coordinación y ritmo"},
+                    {"name": "Trote en el lugar", "sets": 3, "reps": "45 segundos", "rest": 30, "notes": "Acompaña con brazos"},
+                    {"name": "Natación suave", "sets": 1, "reps": "20 minutos", "rest": 0, "notes": "Ritmo constante"},
+                    {"name": "Skipping suave", "sets": 3, "reps": "30 segundos", "rest": 30, "notes": "Eleva rodillas a cadencia media"},
+                    {"name": "Bicicleta de recuperación", "sets": 1, "reps": "15 minutos", "rest": 0, "notes": "Resistencia muy baja"},
                 ],
                 "core": [
                     {"name": "Plancha", "sets": 2, "reps": "20 segundos", "rest": 30, "notes": "Core activado"},
+                    {"name": "Crunches básicos", "sets": 2, "reps": "12-15", "rest": 30, "notes": "No jales el cuello"},
+                    {"name": "Bird dog", "sets": 2, "reps": "8-10 por lado", "rest": 30, "notes": "Movimiento lento"},
+                    {"name": "Puente de glúteos", "sets": 2, "reps": "12-15", "rest": 30, "notes": "Aprieta glúteos arriba"},
                 ],
             },
             "intermedio": {
@@ -332,9 +342,19 @@ def obtener_base_ejercicios(tipo_entrenamiento, nivel):
                     {"name": "Trote continuo", "sets": 1, "reps": "25 minutos", "rest": 0, "notes": "Ritmo constante"},
                     {"name": "Intervalos de carrera", "sets": 6, "reps": "2 min trote / 1 min carrera", "rest": 0, "notes": "Alterna intensidades"},
                     {"name": "Bicicleta intervalos", "sets": 6, "reps": "1 min alta / 1 min baja", "rest": 0, "notes": "Mantén cadencia"},
+                    {"name": "Cuerda de saltar", "sets": 5, "reps": "45 segundos", "rest": 30, "notes": "Aterriza suave"},
+                    {"name": "Skaters", "sets": 3, "reps": "20 segundos", "rest": 30, "notes": "Salto lateral controlado"},
+                    {"name": "Mountain climbers", "sets": 3, "reps": "30 segundos", "rest": 30, "notes": "Ritmo rápido"},
+                    {"name": "Remo ergómetro", "sets": 1, "reps": "15 minutos", "rest": 0, "notes": "Ritmo constante"},
+                    {"name": "Natación a ritmo", "sets": 1, "reps": "25 minutos", "rest": 0, "notes": "Técnica primero"},
+                    {"name": "Subidas al step rápidas", "sets": 4, "reps": "30 segundos", "rest": 30, "notes": "Cambia de pierna líder"},
+                    {"name": "Trote ligero de recuperación", "sets": 1, "reps": "10 minutos", "rest": 0, "notes": "Suave, hablable"},
                 ],
                 "core": [
                     {"name": "Plancha", "sets": 3, "reps": "40 segundos", "rest": 30, "notes": "Mantén posición"},
+                    {"name": "Elevación de piernas acostado", "sets": 3, "reps": "12-15", "rest": 30, "notes": "Baja el peso al suelo"},
+                    {"name": "Russian twists", "sets": 3, "reps": "20 totales", "rest": 30, "notes": "Giro completo"},
+                    {"name": "Bicycle crunches", "sets": 3, "reps": "15 por lado", "rest": 30, "notes": "Codo a rodilla opuesta"},
                 ],
             },
             "avanzado": {
@@ -342,9 +362,19 @@ def obtener_base_ejercicios(tipo_entrenamiento, nivel):
                     {"name": "Carrera de ritmo", "sets": 1, "reps": "40 minutos", "rest": 0, "notes": "Ritmo desafiante"},
                     {"name": "Intervalos intensos", "sets": 10, "reps": "1 min sprint / 1 min trote", "rest": 0, "notes": "Máxima intensidad"},
                     {"name": "Bicicleta resistencia", "sets": 1, "reps": "30 minutos", "rest": 0, "notes": "Resistencia alta, cadencia 80-90"},
+                    {"name": "Sprints en colina", "sets": 8, "reps": "30 segundos", "rest": 60, "notes": "Esfuerzo máximo, pendiente"},
+                    {"name": "Burpees con salto", "sets": 5, "reps": "12-15", "rest": 45, "notes": "Con salto y palmada"},
+                    {"name": "Natación a ritmo", "sets": 1, "reps": "30 minutos", "rest": 0, "notes": "Ritmo competitivo"},
+                    {"name": "Escaladores rápidos", "sets": 5, "reps": "30 segundos", "rest": 30, "notes": "Máxima velocidad"},
+                    {"name": "Sprint en el lugar", "sets": 6, "reps": "20 segundos", "rest": 20, "notes": "Rodillas altas"},
+                    {"name": "Fartlek de 40 minutos", "sets": 1, "reps": "40 minutos", "rest": 0, "notes": "Cambia ritmo por sensación"},
+                    {"name": "Remo sprint", "sets": 8, "reps": "30s máximo / 30s suave", "rest": 0, "notes": "Potencia en cada jalón"},
                 ],
                 "core": [
                     {"name": "Plancha dinámica", "sets": 4, "reps": "45 segundos", "rest": 30, "notes": "Añade movimiento de brazos"},
+                    {"name": "Dragon flags", "sets": 4, "reps": "6-8", "rest": 60, "notes": "Controla el descenso"},
+                    {"name": "Ab wheel rollouts", "sets": 4, "reps": "10-12", "rest": 60, "notes": "Rango completo"},
+                    {"name": "Elevación de piernas colgado", "sets": 4, "reps": "10-12", "rest": 45, "notes": "No balancees el cuerpo"},
                 ],
             },
         }
@@ -416,6 +446,28 @@ def obtener_base_ejercicios(tipo_entrenamiento, nivel):
             "avanzado": EJERCICIOS_DB["avanzado"],
         }
         return base_calistenia.get(nivel, base_calistenia["principiante"])
+
+
+# =============================================================================
+# SELECCIÓN ROTATIVA DE EJERCICIOS (EVITA DUPLICADOS ENTRE DÍAS)
+# =============================================================================
+
+def seleccionar_ejercicios_rotativos(lista, cantidad, dia_num):
+    """
+    Selecciona hasta 'cantidad' ejercicios distintos de una lista.
+    Rota el punto de inicio según el día para que días del mismo tipo
+    no repitan exactamente los mismos ejercicios.
+    """
+    if not lista:
+        return []
+    pool = list(lista)
+    n = len(pool)
+    paso = max(1, n // 3)
+    offset = ((dia_num - 1) * paso) % n
+    seleccion = []
+    for i in range(min(cantidad, n)):
+        seleccion.append(pool[(offset + i) % n])
+    return seleccion
 
 
 # =============================================================================
@@ -524,49 +576,49 @@ def generar_rutina_adaptativa(user_profile):
             
             # ========== Tipos de Yoga ==========
             if tipo_dia == "yoga_flow":
-                ejercicios_dia = ejercicios_por_tipo.get("yoga_flow", [])[:6]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("yoga_flow", []), 6, day_num)
                 nombre_dia = f"Día {day_num}: Flujo de Yoga"
                 
             elif tipo_dia == "yoga_poses":
-                ejercicios_dia = ejercicios_por_tipo.get("yoga_poses", [])[:6]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("yoga_poses", []), 6, day_num)
                 nombre_dia = f"Día {day_num}: Posturas de Yoga"
                 
             elif tipo_dia == "yoga_restorative":
-                ejercicios_dia = ejercicios_por_tipo.get("yoga_restorative", [])[:5]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("yoga_restorative", []), 5, day_num)
                 nombre_dia = f"Día {day_num}: Yoga Restaurativo"
                 
             elif tipo_dia == "yoga_meditation":
-                ejercicios_dia = ejercicios_por_tipo.get("yoga_meditation", [])[:3]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("yoga_meditation", []), 3, day_num)
                 nombre_dia = f"Día {day_num}: Meditación y Respiración"
             
             # ========== Tipos de Cardio ==========
             elif tipo_dia == "cardio":
-                ejercicios_dia = ejercicios_por_tipo.get("cardio", [])[:5]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("cardio", []), 5, day_num)
                 nombre_dia = f"Día {day_num}: Cardio"
             
             # ========== Tipos originales ==========
             elif tipo_dia == "superior":
-                ejercicios_dia = ejercicios_por_tipo.get("fuerza_superior", [])[:5]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("fuerza_superior", []), 5, day_num)
                 nombre_dia = f"Día {day_num}: Fuerza - Tren Superior"
                 
             elif tipo_dia == "inferior":
-                ejercicios_dia = ejercicios_por_tipo.get("fuerza_inferior", [])[:5]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("fuerza_inferior", []), 5, day_num)
                 nombre_dia = f"Día {day_num}: Fuerza - Tren Inferior"
                 
             elif tipo_dia == "fullbody":
-                superior = ejercicios_por_tipo.get("fuerza_superior", [])[:3]
-                inferior = ejercicios_por_tipo.get("fuerza_inferior", [])[:2]
+                superior = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("fuerza_superior", []), 3, day_num)
+                inferior = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("fuerza_inferior", []), 2, day_num)
                 ejercicios_dia = superior + inferior
                 nombre_dia = f"Día {day_num}: Full Body"
                 
             elif tipo_dia == "cardio_core":
-                cardio = ejercicios_por_tipo.get("cardio", [])[:3]
-                core = ejercicios_por_tipo.get("core", [])[:3]
+                cardio = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("cardio", []), 3, day_num)
+                core = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("core", []), 3, day_num)
                 ejercicios_dia = cardio + core
                 nombre_dia = f"Día {day_num}: Cardio + Core"
                 
             else:  # core
-                ejercicios_dia = ejercicios_por_tipo.get("core", [])[:5]
+                ejercicios_dia = seleccionar_ejercicios_rotativos(ejercicios_por_tipo.get("core", []), 5, day_num)
                 nombre_dia = f"Día {day_num}: Core y Estabilidad"
             
             # Ajustar según objetivo (solo para tipos que tengan sets/reps)
@@ -651,14 +703,140 @@ def ajustar_por_objetivo(ejercicios, objetivo):
 # 💬 CHAT ASISTENTE CON ANÁLISIS DE PROGRESO
 # =============================================================================
 
+def _normalizar_chat(texto):
+    """Normaliza texto para comparaciones (sin acentos, minúsculas)."""
+    reemplazos = {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n'}
+    for k, v in reemplazos.items():
+        texto = texto.replace(k, v)
+    return texto.lower()
+
+
+def _recolectar_ejercicios_conocidos():
+    """Une todos los ejercicios de las bases (gym, cardio, yoga, calistenia/mixed)."""
+    ejercicios = {}
+    for tipo in ['gym', 'cardio', 'yoga', 'calisthenics']:
+        for nivel in ['principiante', 'intermedio', 'avanzado']:
+            base = obtener_base_ejercicios(tipo, nivel)
+            for pool in base.values():
+                for ej in pool:
+                    nombre = ej['name']
+                    clave = _normalizar_chat(nombre.split('(')[0].strip())
+                    if clave:
+                        ejercicios[clave] = ej
+    return ejercicios
+
+
+def _contexto_asistente(user_profile):
+    """Arma el contexto del usuario para la IA."""
+    nombre = user_profile.user.nombre
+    try:
+        analisis = AnalisisProgreso(user_profile.user)
+        contexto_progreso = (
+            f"- Tasa de completitud: {analisis.progreso_data['tasa_completitud']:.1f}%\n"
+            f"- Racha: {analisis.progreso_data['racha_actual']} días\n"
+            f"- Ejercicios completados: {analisis.progreso_data['total_ejercicios_completados']}"
+        )
+    except Exception:
+        contexto_progreso = "- Sin datos de progreso aún"
+    perfil = (
+        f"- Tipo de entrenamiento: {getattr(user_profile, 'training_type', 'calisthenics')}\n"
+        f"- Objetivo: {user_profile.objetivo or 'general'}\n"
+        f"- Nivel: {user_profile.experiencia or 'principiante'}\n"
+        f"- Frecuencia: {user_profile.frecuencia} días/semana\n"
+        f"- Lesiones/limitaciones: {user_profile.lesiones or 'ninguna'}"
+    )
+    plan_ctx = "- Sin plan activo aún."
+    try:
+        plan = WorkoutPlan.objects.filter(user=user_profile.user).latest('generated_at')
+        dias = plan.workout_days.count()
+        hoy = plan.workout_days.filter(day_index=timezone.now().date().weekday()).first()
+        plan_ctx = f"- Plan activo: '{plan.title}' ({dias} días)"
+        if hoy:
+            nombres = list(hoy.workout_exercises.all().values_list('name', flat=True)[:5])
+            plan_ctx += f"\n- Rutina de hoy: {hoy.name}: {', '.join(nombres)}"
+    except WorkoutPlan.DoesNotExist:
+        pass
+    except Exception:
+        pass
+    return (
+        f"Nombre: {nombre}\n{perfil}\n{contexto_progreso}\n{plan_ctx}"
+    )
+
+
 def chat_asistente_inteligente(user_profile, pregunta):
-    """Chat que considera el progreso del usuario"""
+    """Chat que considera el progreso y contexto del usuario"""
     try:
         pregunta_lower = pregunta.lower()
         nombre = user_profile.user.nombre
-        
+
+        # --- 1) Intento de IA real (Gemini). Si no hay API key, se omite ---
+        contexto = _contexto_asistente(user_profile)
+        try:
+            respuesta_ia = ai_engine.responder_pregunta(pregunta, contexto)
+            if respuesta_ia:
+                return respuesta_ia
+        except Exception:
+            pass
+
         analisis = AnalisisProgreso(user_profile.user)
-        
+
+        # --- 2) Rutina de hoy ---
+        if any(palabra in pregunta_lower for palabra in [
+            "rutina de hoy", "que hago hoy", "entrenamiento de hoy", "ejercicios de hoy",
+            "que tengo hoy", "workout hoy", "hoy toca", "que toca hoy"
+        ]):
+            try:
+                plan = WorkoutPlan.objects.filter(user=user_profile.user).latest('generated_at')
+                dia = plan.workout_days.filter(day_index=timezone.now().date().weekday()).first()
+                if not dia:
+                    return f"🚫 Hoy no hay rutina asignada en tu plan '{plan.title}'. ¡Día de descanso! 💤"
+                ejercicios = list(dia.workout_exercises.all())
+                linea = "\n".join([
+                    f"- **{ex.name}**: {ex.sets} series × {ex.reps}" + (f" — {ex.notes}" if ex.notes else "")
+                    for ex in ejercicios
+                ])
+                return f"""🏋️ **Rutina de hoy, {nombre}**
+
+**{dia.name}**
+
+{linea}
+
+🎯 Toca cada ejercicio como completado al terminar. ¡A darle! 💪"""
+            except WorkoutPlan.DoesNotExist:
+                return "Aún no tienes un plan activo. Regresa al dashboard y genera tu rutina primero."
+
+        # --- 3) Ask por un ejercicio específico ---
+        ej_mencionado = None
+        pregunta_norm = _normalizar_chat(pregunta)
+        if any(p in pregunta_lower for p in [
+            "ejercicio", "como hago", "tecnica", "forma de", "como se hace", "hacer bien",
+            "marcar", "trabajar", "entrenar", "fortalecer", "que es"
+        ]) or "como" in pregunta_lower:
+            conocidos = _recolectar_ejercicios_conocidos()
+            mejor = ("", None)
+            for clave, ej in conocidos.items():
+                if clave in pregunta_norm:
+                    if len(clave) > len(mejor[0]):
+                        mejor = (clave, ej)
+            if mejor[1]:
+                ej_mencionado = mejor[1]
+
+        if ej_mencionado:
+            ej = ej_mencionado
+            sets = ej.get('sets', 1)
+            reps = ej.get('reps', '')
+            rest = ej.get('rest', 30)
+            notes = ej.get('notes', '')
+            return f"""🏋️ **{ej['name']}**
+
+**Volumen:** {sets} series × {reps}
+**Descanso:** {rest} segundos
+
+**Puntos clave de técnica:**
+{notes}
+
+💡 Empieza con una serie ligera de calentamiento y aumenta el peso/ritmo de forma progresiva. Si tienes dudas de la forma, pregúntame cómo hacerlo bien."""
+
         if any(palabra in pregunta_lower for palabra in ["progreso", "como voy", "avance", "mejorando"]):
             tasa = analisis.progreso_data['tasa_completitud']
             racha = analisis.progreso_data['racha_actual']
@@ -769,20 +947,55 @@ def chat_asistente_inteligente(user_profile, pregunta):
 
         else:
             tipo_entrenamiento = getattr(user_profile, 'training_type', 'calisthenics')
-            return f"""Hola {nombre}, entiendo tu pregunta sobre '{pregunta[:40]}...'.
 
-Según tu progreso actual:
-- Completitud: {analisis.progreso_data['tasa_completitud']:.1f}%
-- Racha: {analisis.progreso_data['racha_actual']} días
-- Tipo de entrenamiento: {tipo_entrenamiento}
+            # Preguntas por grupo muscular / parte del cuerpo
+            grupos = {
+                'pecho': ['pecho', 'press banca', 'flexiones', 'fondos de pecho'],
+                'espalda': ['espalda', 'remo', 'dominadas', 'jalon'],
+                'pierna': ['pierna', 'piernas', 'sentadilla', 'zancadas', 'cuadricep', 'isquio', 'femoral', 'gluteo', 'gluteos'],
+                'hombro': ['hombro', 'hombros', 'pres militar', 'elevaciones laterales'],
+                'brazo': ['brazo', 'brazos', 'biceps', 'triceps', 'curl'],
+                'core': ['abdomen', 'abdominales', 'core', 'plancha', 'crunches', 'abs'],
+            }
+            grupo_encontrado = None
+            for grupo, palabras in grupos.items():
+                if any(p in pregunta_lower for p in palabras):
+                    grupo_encontrado = grupo
+                    break
 
-💡 **Recomendaciones:**
-1. Mantén la constancia
-2. Enfócate en la técnica
-3. Progresa gradualmente
-4. Descansa adecuadamente
+            if grupo_encontrado:
+                conocidos = _recolectar_ejercicios_conocidos()
+                palabras = grupos[grupo_encontrado]
+                ejemplos = [ej['name'] for clave, ej in conocidos.items() if any(p in clave for p in palabras)]
+                unicos = list(dict.fromkeys(ejemplos))[:5]
+                if unicos:
+                    lista = chr(10).join(f"- {e}" for e in unicos)
+                    return f"""🎯 **Ejercicios para {grupo_encontrado}, {nombre}:**
 
-¿Necesitas ayuda con algún ejercicio específico o sobre tu progreso?"""
+{lista}
+
+¿Quieres que te explique la técnica de alguno o cuáles van mejor para tu objetivo ({user_profile.objetivo or 'general'})?"""
+
+            # Respuesta general útil
+            extra = ""
+            try:
+                plan = WorkoutPlan.objects.filter(user=user_profile.user).latest('generated_at')
+                dia = plan.workout_days.filter(day_index=timezone.now().date().weekday()).first()
+                if dia:
+                    extra = f" Hoy tu rutina es **{dia.name}**."
+            except WorkoutPlan.DoesNotExist:
+                pass
+
+            return f"""Hola {nombre} 😊, puedo ayudarte con:
+
+- **Tu progreso**: pregúntame '¿cómo voy?'
+- **Rutina de hoy**: '¿qué ejercicios tengo hoy?'
+- **Nutrición**: '¿qué debo comer para {user_profile.objetivo or 'mi objetivo'}?'
+- **Un ejercicio**: '¿cómo hago sentadilla correctamente?'
+
+Actualmente haces **{tipo_entrenamiento}** de nivel **{user_profile.experiencia or 'principiante'}** con objetivo **{user_profile.objetivo or 'general'}**.{extra}
+
+💡 ¿En qué más te ayudo?"""
 
     except Exception as e:
         print(f"[CHAT] Error: {e}")
@@ -1301,7 +1514,10 @@ def check_plan_updates(request, plan_id):
                 last_modified_from_client = timezone.datetime.fromisoformat(
                     last_modified_param.replace('Z', '+00:00')
                 )
-                modified = plan.last_modified > last_modified_from_client
+                # Comparar con tolerancia de 2s para evitar falsos positivos
+                # por truncado de microsegundos en la serialización.
+                delta = plan.last_modified - last_modified_from_client
+                modified = delta.total_seconds() > 2
             except:
                 modified = True
         else:

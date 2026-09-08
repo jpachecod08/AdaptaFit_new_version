@@ -117,3 +117,30 @@ Responde SOLO con JSON válido, sin texto adicional, con esta estructura exacta:
     except Exception as e:
         print(f"[IA] Error generando contenido para '{nombre_ejercicio}': {e}")
         return None
+
+
+def responder_pregunta(pregunta, contexto):
+    """
+    Chat libre con Gemini para el asistente.
+    Devuelve el texto de la respuesta o None si no hay IA configurada/disponible.
+    """
+    model = _get_model()
+    if model is None:
+        return None
+
+    prompt = f"""Actúa como el asistente personal de entrenamiento de la app fitness AdaptaFit.
+Responde en español (México), de forma breve, práctica y motivadora. Si te preguntan por
+ejercicios, técnica o nutrición, da consejos claros y seguros. Puedes usar listas cortas.
+
+Pregunta del usuario: {pregunta}
+
+Contexto del usuario:
+{contexto}
+"""
+    try:
+        respuesta = model.generate_content(prompt)
+        texto = respuesta.text.strip()
+        return texto or None
+    except Exception as e:
+        print(f"[IA] Error respondiendo chat: {e}")
+        return None

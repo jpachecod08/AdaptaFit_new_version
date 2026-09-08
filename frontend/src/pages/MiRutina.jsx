@@ -255,6 +255,7 @@ const MiRutina = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const chatEndRef = useRef(null);
+  const lastNotifiedRef = useRef(null);
 
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -535,7 +536,10 @@ const MiRutina = () => {
           setCompletedExercises(newCompletedState);
           
           // Solo mostrar notificación si NO es el entrenador quien hizo los cambios
-          if (!isTrainer) {
+          // y si la modificación aún no ha sido notificada (evita notificaciones repetidas).
+          const nuevoLastModified = planData.last_modified || planData.generated_at;
+          if (!isTrainer && nuevoLastModified !== lastNotifiedRef.current) {
+            lastNotifiedRef.current = nuevoLastModified;
             setSnackbar({
               open: true,
               message: '¡Tu entrenador ha actualizado tu rutina! Los cambios han sido aplicados.',
@@ -1535,7 +1539,7 @@ const handleRegeneratePlan = async () => {
                 Tu plan no coincide con tu frecuencia actual
               </Typography>
               <Typography variant="body2">
-                Tu perfil indica {userProfile?.frecuencia} días/semana, pero este plan tiene {plan.days?.length} días.
+                Tu perfil indica {userProfile?.frecuencia || 3} días/semana, pero este plan tiene {plan.days?.length} días.
               </Typography>
             </Alert>
           </Collapse>
