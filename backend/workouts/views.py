@@ -711,10 +711,30 @@ def _normalizar_chat(texto):
     return texto.lower()
 
 
-def _recolectar_ejercicios_conocidos():
-    """Une todos los ejercicios de las bases (gym, cardio, yoga, calistenia/mixed)."""
+def _nombre_objetivo(objetivo):
+    """Traduce el valor almacenado del objetivo a texto amigable."""
+    mapa = {
+        'perder_peso': 'perder peso',
+        'perder peso': 'perder peso',
+        'ganar_musculo': 'ganar músculo',
+        'ganar muscul': 'ganar músculo',
+        'tonificar': 'tonificar',
+        'definicion': 'definir',
+        'resistencia': 'resistencia',
+        'fuerza': 'fuerza',
+        'general': 'general',
+        '': 'general',
+    }
+    clave = _normalizar_chat(str(objetivo or 'general'))
+    return mapa.get(clave, clave)
+
+
+def _recolectar_ejercicios_conocidos(tipo_preferido=None):
+    """Une todos los ejercicios de las bases (gym, cardio, yoga, calistenia/mixed).
+    Si se pasa 'tipo_preferido', se priorizan sus ejercicios y se evita duplicar nombres."""
     ejercicios = {}
-    for tipo in ['gym', 'cardio', 'yoga', 'calisthenics']:
+    tipos = list(filter(None, [tipo_preferido, 'gym', 'cardio', 'yoga', 'calisthenics']))
+    for tipo in tipos:
         for nivel in ['principiante', 'intermedio', 'avanzado']:
             base = obtener_base_ejercicios(tipo, nivel)
             for pool in base.values():
@@ -722,7 +742,7 @@ def _recolectar_ejercicios_conocidos():
                     nombre = ej['name']
                     clave = _normalizar_chat(nombre.split('(')[0].strip())
                     if clave:
-                        ejercicios[clave] = ej
+                        ejercicios.setdefault(clave, ej)
     return ejercicios
 
 
@@ -808,14 +828,16 @@ def chat_asistente_inteligente(user_profile, pregunta):
         # --- 3) Ask por un ejercicio específico ---
         ej_mencionado = None
         pregunta_norm = _normalizar_chat(pregunta)
+        tipo_preferido = getattr(user_profile, 'training_type', 'calisthenics')
         if any(p in pregunta_lower for p in [
             "ejercicio", "como hago", "tecnica", "forma de", "como se hace", "hacer bien",
             "marcar", "trabajar", "entrenar", "fortalecer", "que es"
         ]) or "como" in pregunta_lower:
-            conocidos = _recolectar_ejercicios_conocidos()
+            conocidos = _recolectar_ejercicios_conocidos(tipo_preferido)
             mejor = ("", None)
             for clave, ej in conocidos.items():
-                if clave in pregunta_norm:
+                palabras_clave = [w for w in clave.split() if len(w) >= 4]
+                if clave in pregunta_norm or palabras_clave and all(w in pregunta_norm for w in palabras_clave):
                     if len(clave) > len(mejor[0]):
                         mejor = (clave, ej)
             if mejor[1]:
@@ -950,11 +972,11 @@ def chat_asistente_inteligente(user_profile, pregunta):
 
             # Preguntas por grupo muscular / parte del cuerpo
             grupos = {
-                'pecho': ['pecho', 'press banca', 'flexiones', 'fondos de pecho'],
-                'espalda': ['espalda', 'remo', 'dominadas', 'jalon'],
-                'pierna': ['pierna', 'piernas', 'sentadilla', 'zancadas', 'cuadricep', 'isquio', 'femoral', 'gluteo', 'gluteos'],
-                'hombro': ['hombro', 'hombros', 'pres militar', 'elevaciones laterales'],
-                'brazo': ['brazo', 'brazos', 'biceps', 'triceps', 'curl'],
+                'pecho': ['pecho', 'press de banca', 'banca', 'flexiones', 'fondos de pecho', 'aperturas'],
+                'espalda': ['espalda', 'remo', 'dominadas', 'jalon', 'muscle up'],
+                'pierna': ['pierna', 'piernas', 'sentadilla', 'zancadas', 'cuadricep', 'isquio', 'femoral', 'gluteo', 'gluteos', 'prensa'],
+                'hombro': ['hombro', 'hombros', 'press militar', 'elevaciones laterales', 'pike', 'deltoides'],
+                'brazo': ['brazo', 'brazos', 'biceps', 'triceps', 'curl', 'extensiones'],
                 'core': ['abdomen', 'abdominales', 'core', 'plancha', 'crunches', 'abs'],
             }
             grupo_encontrado = None
@@ -964,7 +986,7 @@ def chat_asistente_inteligente(user_profile, pregunta):
                     break
 
             if grupo_encontrado:
-                conocidos = _recolectar_ejercicios_conocidos()
+                conocidos = _recolectar_ejercicios_conocidos(tipo_entrenamiento)
                 palabras = grupos[grupo_encontrado]
                 ejemplos = [ej['name'] for clave, ej in conocidos.items() if any(p in clave for p in palabras)]
                 unicos = list(dict.fromkeys(ejemplos))[:5]
@@ -974,7 +996,7 @@ def chat_asistente_inteligente(user_profile, pregunta):
 
 {lista}
 
-¿Quieres que te explique la técnica de alguno o cuáles van mejor para tu objetivo ({user_profile.objetivo or 'general'})?"""
+¿Quieres que te explique la técnica de alguno o cuáles van mejor para tu objetivo ({_nombre_objetivo(user_profile.objetivo)})?"""
 
             # Respuesta general útil
             extra = ""
@@ -990,10 +1012,10 @@ def chat_asistente_inteligente(user_profile, pregunta):
 
 - **Tu progreso**: pregúntame '¿cómo voy?'
 - **Rutina de hoy**: '¿qué ejercicios tengo hoy?'
-- **Nutrición**: '¿qué debo comer para {user_profile.objetivo or 'mi objetivo'}?'
+- **Nutrición**: '¿qué debo comer para {_nombre_objetivo(user_profile.objetivo)}?'
 - **Un ejercicio**: '¿cómo hago sentadilla correctamente?'
 
-Actualmente haces **{tipo_entrenamiento}** de nivel **{user_profile.experiencia or 'principiante'}** con objetivo **{user_profile.objetivo or 'general'}**.{extra}
+Actualmente haces **{tipo_entrenamiento}** de nivel **{user_profile.experiencia or 'principiante'}** con objetivo **{_nombre_objetivo(user_profile.objetivo)}**.{extra}
 
 💡 ¿En qué más te ayudo?"""
 
