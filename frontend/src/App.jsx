@@ -57,10 +57,7 @@ function App() {
   }, []);
 
   const handleLogin = (token, role) => {
-    console.log('handleLogin recibido:', { token, role });
-    
     if (!token || !role) {
-      console.error('Falta token o rol en login');
       alert('Error: No se recibieron credenciales completas');
       return;
     }
@@ -75,8 +72,6 @@ function App() {
     // Asegurarse de que se guarda en localStorage
     localStorage.setItem('authToken', token);
     localStorage.setItem('userRole', role);
-    
-    console.log('Autenticación actualizada:', { isAuthenticated: true, token, role });
     
     // Forzar recarga para que las rutas protegidas se activen
     window.location.href = '/dashboard';
@@ -94,9 +89,7 @@ function App() {
   };
 
   // ✅ Función para manejar actualización del perfil
-  const handleProfileUpdate = (updatedData) => {
-    console.log('Perfil actualizado:', updatedData);
-  };
+  const handleProfileUpdate = () => {};
 
   // Mientras cargamos la autenticación mostramos un mensaje o spinner
   if (loadingAuth) {
@@ -116,11 +109,6 @@ function App() {
       </div>
     );
   }
-
-  // Debug: mostrar estado actual
-  console.log('Estado de auth en App:', auth);
-  console.log('localStorage token:', localStorage.getItem('authToken'));
-  console.log('localStorage role:', localStorage.getItem('userRole'));
 
   return (
     <BrowserRouter>

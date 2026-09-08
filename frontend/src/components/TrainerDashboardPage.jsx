@@ -40,7 +40,9 @@ import {
   FormControl,
   InputLabel,
   Snackbar,
-  Alert as MuiAlert
+  Alert as MuiAlert,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Person,
@@ -75,6 +77,8 @@ import { API_URL } from '../config';
 
 const TrainerDashboardPage = ({ onLogout }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -505,16 +509,16 @@ const TrainerDashboardPage = ({ onLogout }) => {
                 </Button>
               </Box>
             ) : (
-              <TableContainer>
-                <Table>
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: isMobile ? 600 : 900 }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                       <TableCell><strong>Cliente</strong></TableCell>
-                      <TableCell><strong>Plan Actual</strong></TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Plan Actual</strong></TableCell>
                       <TableCell><strong>Progreso Hoy</strong></TableCell>
-                      <TableCell><strong>Racha</strong></TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Racha</strong></TableCell>
                       <TableCell><strong>Estado</strong></TableCell>
-                      <TableCell><strong>Última Actividad</strong></TableCell>
+                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Última Actividad</strong></TableCell>
                       <TableCell><strong>Acciones</strong></TableCell>
                     </TableRow>
                   </TableHead>
@@ -537,7 +541,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
                             </Box>
                           </Box>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           <Typography variant="body2">
                             {client.plan_name || 'Sin plan'}
                           </Typography>
@@ -561,7 +565,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           <Chip 
                             icon={<TrendingUp />}
                             label={`${client.current_streak || 0} días`}
@@ -587,7 +591,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           <Typography variant="body2">
                             {formatDate(client.last_activity)}
                           </Typography>

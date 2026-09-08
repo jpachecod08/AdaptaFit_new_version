@@ -15,6 +15,11 @@ import {
   IconButton,
   CircularProgress,
   Divider,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Visibility,
@@ -26,7 +31,6 @@ import {
   Badge,
   Phone,
   Description,
-  FitnessCenter,
   MedicalServices,
 } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
@@ -49,6 +53,12 @@ const RegisterPage = () => {
     experiencia: '',
     objetivos: '',
     nivel_fisico: '',
+    training_type: 'gym',
+    frecuencia: 3,
+    peso: '',
+    altura: '',
+    fechaNacimiento: '',
+    genero: '',
   });
 
   const [snackbar, setSnackbar] = useState({
@@ -93,10 +103,15 @@ const RegisterPage = () => {
             email: formData.email,
             password: formData.password,
             profile: {
-              objetivo: formData.objetivos || '',
-              experiencia: formData.nivel_fisico || '',
+              fechaNacimiento: formData.fechaNacimiento || null,
+              genero: formData.genero || '',
+              altura: formData.altura ? parseInt(formData.altura) : null,
+              peso: formData.peso ? parseFloat(formData.peso) : null,
+              objetivo: formData.objetivos || 'mantenerse',
+              experiencia: formData.nivel_fisico || 'principiante',
+              frecuencia: formData.frecuencia ? parseInt(formData.frecuencia) : 3,
               lesiones: formData.lesiones || '',
-              training_type: 'calisthenics',
+              training_type: formData.training_type,
             },
           };
 
@@ -121,6 +136,27 @@ const RegisterPage = () => {
   }
 };
 
+
+  const trainingTypeOptions = [
+    { value: 'gym', label: '🏋️ Gimnasio (pesas/máquinas)' },
+    { value: 'calisthenics', label: '💪 Calistenia (peso corporal)' },
+    { value: 'cardio', label: '❤️ Aeróbico (correr, nadar, bici)' },
+    { value: 'yoga', label: '🧘 Yoga / Pilates' },
+    { value: 'mixed', label: '🔄 Mixto (combinado)' },
+  ];
+
+  const objetivoOptions = [
+    { value: 'perder_peso', label: 'Perder peso' },
+    { value: 'ganar_musculo', label: 'Ganar masa muscular' },
+    { value: 'mantenerse', label: 'Mantenerse en forma' },
+    { value: 'resistencia', label: 'Mejorar la resistencia' },
+  ];
+
+  const experienciaOptions = [
+    { value: 'principiante', label: 'Principiante' },
+    { value: 'intermedio', label: 'Intermedio' },
+    { value: 'avanzado', label: 'Avanzado' },
+  ];
 
   return (
     <Box
@@ -256,54 +292,152 @@ const RegisterPage = () => {
               Perfil y condición física
             </Typography>
             <Typography variant="body2" color="text.secondary" mb={2}>
-              Esta información permite adaptar la experiencia a tus necesidades.
+              Esta información permite crear un plan de entrenamiento 100% adaptado a ti.
             </Typography>
 
-            <TextField
-              fullWidth
-              label="Objetivos de entrenamiento"
-              name="objetivos"
-              margin="normal"
-              value={formData.objetivos}
-              onChange={handleChange}
-              multiline
-              rows={2}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <FitnessCenter fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>🏋️ Tipo de entrenamiento</InputLabel>
+                  <Select
+                    name="training_type"
+                    value={formData.training_type}
+                    onChange={handleChange}
+                    label="Tipo de entrenamiento"
+                  >
+                    {trainingTypeOptions.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-            <TextField
-              fullWidth
-              label="Nivel físico actual"
-              name="nivel_fisico"
-              margin="normal"
-              value={formData.nivel_fisico}
-              onChange={handleChange}
-              helperText="Ejemplo: principiante, intermedio o avanzado"
-            />
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Objetivo principal</InputLabel>
+                  <Select
+                    name="objetivos"
+                    value={formData.objetivos}
+                    onChange={handleChange}
+                    label="Objetivo principal"
+                  >
+                    {objetivoOptions.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-            <TextField
-              fullWidth
-              label="Lesiones o limitaciones"
-              name="lesiones"
-              margin="normal"
-              value={formData.lesiones}
-              onChange={handleChange}
-              multiline
-              rows={2}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MedicalServices fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Nivel físico actual</InputLabel>
+                  <Select
+                    name="nivel_fisico"
+                    value={formData.nivel_fisico}
+                    onChange={handleChange}
+                    label="Nivel físico actual"
+                  >
+                    {experienciaOptions.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Frecuencia de entrenamiento (días/semana)"
+                  name="frecuencia"
+                  type="number"
+                  margin="normal"
+                  value={formData.frecuencia}
+                  onChange={handleChange}
+                  InputProps={{ inputProps: { min: 1, max: 7 } }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Estatura (cm)"
+                  name="altura"
+                  type="number"
+                  margin="normal"
+                  value={formData.altura}
+                  onChange={handleChange}
+                  InputProps={{ endAdornment: 'cm' }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Peso (kg)"
+                  name="peso"
+                  type="number"
+                  margin="normal"
+                  value={formData.peso}
+                  onChange={handleChange}
+                  InputProps={{ endAdornment: 'kg' }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Fecha de nacimiento"
+                  name="fechaNacimiento"
+                  type="date"
+                  margin="normal"
+                  value={formData.fechaNacimiento}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Género</InputLabel>
+                  <Select
+                    name="genero"
+                    value={formData.genero}
+                    onChange={handleChange}
+                    label="Género"
+                  >
+                    <MenuItem value="masculino">Masculino</MenuItem>
+                    <MenuItem value="femenino">Femenino</MenuItem>
+                    <MenuItem value="otro">Otro</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Lesiones o limitaciones"
+                  name="lesiones"
+                  margin="normal"
+                  value={formData.lesiones}
+                  onChange={handleChange}
+                  multiline
+                  rows={2}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <MedicalServices fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+            </Grid>
 
             {role === 'entrenador' && (
               <TextField

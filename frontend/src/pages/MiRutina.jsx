@@ -1469,7 +1469,7 @@ const handleRegeneratePlan = async () => {
               <Button
                 variant="outlined"
                 startIcon={<BarChart3 />}
-                onClick={() => navigate('/estadisticas')}
+                onClick={() => navigate('/dashboard')}
                 sx={{ borderRadius: '12px' }}
               >
                 Ver Estadísticas

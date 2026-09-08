@@ -262,7 +262,7 @@ const MiEntrenador = ({ token }) => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Paper elevation={2} sx={{ p: 3, borderRadius: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Avatar 
                 sx={{ 

@@ -255,7 +255,7 @@ const BuscarEntrenadores = ({ token, onSelectTrainer }) => {
     <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
+        <Typography variant="h4" fontWeight="bold" gutterBottom color="primary" sx={{ fontSize: { xs: '1.6rem', sm: '2.1rem' } }}>
           Encuentra Tu Entrenador Ideal
         </Typography>
         <Typography variant="h6" color="text.secondary" gutterBottom>
