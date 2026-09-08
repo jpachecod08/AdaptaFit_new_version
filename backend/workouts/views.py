@@ -864,6 +864,102 @@ def chat_asistente_inteligente(user_profile, pregunta):
 
 💡 Empieza con una serie ligera de calentamiento y aumenta el peso/ritmo de forma progresiva. Si tienes dudas de la forma, pregúntame cómo hacerlo bien."""
 
+        # --- 4) Guía de cardio (cómo hacerlo bien + qué ejercicios) ---
+        if any(p in pregunta_lower for p in [
+            "cardio", "quemar grasa", "quemar calorias", "mejorar mi cardio",
+            "resistencia cardiovascular", "condicion", "aguantar mas", "fatiga"
+        ]):
+            nivel = user_profile.experiencia or 'principiante'
+            base_c = obtener_base_ejercicios('cardio', nivel)
+            pool = base_c.get('cardio', [])[:4]
+            ejemplos = chr(10).join(f"- **{e['name']}**: {e['reps']} — {e['notes']}" for e in pool if e.get('reps'))
+            return f"""🏃 **Guía de cardio pensada para ti ({nivel}), {nombre}:**
+
+{ejemplos or '- Caminata a paso rápido, trote suave o bicicleta'}
+
+**Cómo hacerlo bien:**
+- Calienta 5-10 minutos antes de cada sesión.
+- Empieza a un ritmo donde puedas hablar (zona 2) para construir base.
+- 2-3 sesiones por semana es ideal al inicio; sube la duración ~10% por semana.
+
+{'🎯 **Para quemar grasa:** mezcla cardio suave (30-40 min constante) con 1-2 días de intervalos (1 min rápido + 2 min suave × 6-8).' if 'perder' in str(user_profile.objetivo or '').lower() else '💪 Termina con 5 min de enfriamiento y estiramiento.'}
+
+¿Quieres que te arme la rutina de la semana?"""
+
+        # --- 5) Rutina semanal / armar plan / nuevos usuarios ---
+        if any(p in pregunta_lower for p in [
+            "rutina", "tener una rutina", "plan de entrenamiento", "armar", "estructurar",
+            "organizar mi semana", "organizar mi entrenamiento", "que entrenar", "dame una rutina",
+            "como empiezo", "soy nuevo", "donde empiezo", "iniciar", "semana de entrenamiento"
+        ]):
+            tipo = getattr(user_profile, 'training_type', 'calisthenics')
+            freq = user_profile.frecuencia or 3
+            if tipo == 'cardio':
+                base_semana = ["Cardio suave", "Cardio + core", "Cardio de intervalos"]
+            elif tipo == 'yoga':
+                base_semana = ["Flujo de yoga", "Posturas de yoga", "Yoga restaurativo"]
+            else:
+                base_semana = ["Fuerza superior", "Fuerza inferior", "Full body"]
+            semana = [base_semana[i % len(base_semana)] for i in range(freq)]
+            lista = chr(10).join(f"- **Día {i+1}:** {d}" for i, d in enumerate(semana))
+            try:
+                WorkoutPlan.objects.get(user=user_profile.user)
+                tiene_plan = True
+            except WorkoutPlan.DoesNotExist:
+                tiene_plan = False
+            except WorkoutPlan.MultipleObjectsReturned:
+                tiene_plan = True
+            if tiene_plan:
+                return f"""📅 **Tu semana propuesta de {tipo} ({freq} días), {nombre}:**
+
+{lista}
+
+Tu objetivo es **{_nombre_objetivo(user_profile.objetivo)}**. Ya tienes un plan activo en AdaptaFit: ábrelo en **Mi Rutina** y sigue sus días (incluye ejercicios y videos). Si quieres ajustarlo, usa **Regenerar plan**."""
+
+            return f"""📅 **Semana de entrenamiento para ti ({freq} días de {tipo}), {nombre}:**
+
+{lista}
+
+👉 Entra a **Mi Rutina** y genera tu plan personalizado para que se carguen los ejercicios con técnica y video. ¿Quieres que te explique alguno?"""
+
+        # --- 6) Calentamiento / estiramiento / evitar lesiones ---
+        if any(p in pregunta_lower for p in [
+            "calentar", "calentamiento", "estirar", "estiramiento", "evitar lesiones",
+            "lesion", "lesionarme", "precaucion", "seguro"
+        ]):
+            return f"""🤸 **Calentamiento y prevención de lesiones, {nombre}:**
+
+**Calentamiento (5-10 min antes de entrenar):**
+- 3-4 min de cardio suave (marcha/trote/caminata rápida)
+- Movilidad: círculos de brazos, cadera y rodillas
+- 2 series de calentamiento del ejercicio principal con poco peso
+
+**Enfriamiento (5 min):**
+- Estiramientos suaves de los músculos que trabajaste
+- Respiración profunda y relajación
+
+**Regla de oro:** si algo duele agudamente, para y escucha a tu cuerpo. La técnica vale más que el peso/ritmo."""
+
+        # --- 7) Primeros pasos / bienvenida ---
+        if any(p in pregunta_lower for p in [
+            "hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "que onda",
+            "en que ayudas", "que puedes hacer", "ayuda", "como funcionas"
+        ]):
+            entrada = "¡Hola! 👋" if "hola" in pregunta_lower else "¡Buen día! 👋"
+            return f"""{entrada} **{nombre}**, soy tu asistente de entrenamiento de AdaptaFit. Puedo ayudarte con:
+
+- **Tu progreso**: '¿cómo voy?'
+- **Tu rutina de hoy**: '¿qué ejercicios tengo hoy?'
+- **Plan semanal**: 'ayúdame a tener una rutina'
+- **Cardio**: 'cómo hacer ejercicios de cardio'
+- **Nutrición**: 'ayúdame con mi alimentación'
+- **Descanso y lesiones**: 'cómo evitar lesiones'
+- **Un ejercicio específico**: 'cómo hago sentadilla/press/plancha'
+
+Tu perfil: **{getattr(user_profile, 'training_type', 'calisthenics')}** de nivel **{user_profile.experiencia or 'principiante'}**. 🤝
+
+¿Por dónde empezamos?"""
+
         if any(palabra in pregunta_lower for palabra in ["progreso", "como voy", "avance", "mejorando"]):
             tasa = analisis.progreso_data['tasa_completitud']
             racha = analisis.progreso_data['racha_actual']
