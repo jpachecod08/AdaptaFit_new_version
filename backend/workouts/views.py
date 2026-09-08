@@ -1145,7 +1145,11 @@ def chat_asistente(request):
         })
     
     respuesta = chat_asistente_inteligente(user_profile, pregunta)
-    return Response({"answer": respuesta})
+    return Response({
+        "answer": respuesta,
+        "ia": ai_engine.ia_habilitada(),
+        "modelo": ai_engine.GEMINI_MODEL if ai_engine.ia_habilitada() else None,
+    })
 
 def generar_y_guardar_plan(user):
     from django.contrib.auth import get_user_model
