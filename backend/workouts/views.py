@@ -1,5 +1,6 @@
 # workouts/views.py
 import json
+import re
 import traceback
 from django.http import JsonResponse
 from django.utils import timezone
@@ -834,10 +835,14 @@ def chat_asistente_inteligente(user_profile, pregunta):
             "marcar", "trabajar", "entrenar", "fortalecer", "que es"
         ]) or "como" in pregunta_lower:
             conocidos = _recolectar_ejercicios_conocidos(tipo_preferido)
+            tokens_pregunta = re.findall(r'[a-z]{8,}', pregunta_norm)
             mejor = ("", None)
             for clave, ej in conocidos.items():
                 palabras_clave = [w for w in clave.split() if len(w) >= 4]
-                if clave in pregunta_norm or palabras_clave and all(w in pregunta_norm for w in palabras_clave):
+                igual_por_nombre = clave in pregunta_norm
+                igual_por_palabras = bool(palabras_clave) and all(w in pregunta_norm for w in palabras_clave)
+                igual_por_token = any(t in clave for t in tokens_pregunta)
+                if igual_por_nombre or igual_por_palabras or igual_por_token:
                     if len(clave) > len(mejor[0]):
                         mejor = (clave, ej)
             if mejor[1]:
