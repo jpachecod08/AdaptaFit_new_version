@@ -14,6 +14,7 @@ from .models import WorkoutPlan, WorkoutDay, Exercise, UserProgress, WorkoutExer
 from users.models import UserProfile
 from django.db.models import Count, Avg, Q
 from . import ai_engine
+from .video_catalog import video_embed_url
 
 print("=" * 60)
 print("🧠 ADAPTAFIT - SISTEMA ADAPTATIVO CON IA")
@@ -1214,6 +1215,12 @@ def generar_y_guardar_plan(user):
                         'video_query': exercise_name,
                     }
                 )
+
+                # Video del catálogo verificado (sin depender de la IA)
+                video_cat = video_embed_url(exercise_name)
+                if video_cat and exercise_obj.video_url != video_cat:
+                    exercise_obj.video_url = video_cat
+                    exercise_obj.save()
                 
                 # Capa de IA (opcional, con fallback al motor determinista)
                 notas_ejercicio = ex.get("notes", "")

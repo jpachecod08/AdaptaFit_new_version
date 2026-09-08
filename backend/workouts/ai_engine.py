@@ -23,7 +23,12 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+# Por defecto usamos un modelo reciente: las llaves nuevas de Gemini ya no
+# tienen acceso a gemini-1.5-flash. Se puede sobreescribir con GEMINI_MODEL.
+DEFAULT_MODEL = 'gemini-3.6-flash'
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', DEFAULT_MODEL)
+# Fallbacks en orden de prioridad si el modelo configurado falla/no existe.
+FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite']
 
 _model = None
 
@@ -48,6 +53,39 @@ def _get_model():
 def ia_habilitada():
     """¿Está la capa de IA lista para usarse?"""
     return _get_model() is not None
+
+
+def _generate(prompt, temperature=0.7):
+    """
+    Genera contenido con Gemini probando el modelo configurado y, si falla
+    (modelo no disponible / cuota / sobrecarga), los modelos de respaldo.
+    Devuelve el texto de la respuesta o None si todo falla.
+    """
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        return None
+    candidatos = [GEMINI_MODEL] + [m for m in FALLBACK_MODELS if m != GEMINI_MODEL]
+    import time
+    for modelo in candidatos:
+        for intento in range(3):
+            try:
+                genai.configure(api_key=GEMINI_API_KEY)
+                modelo_ia = genai.GenerativeModel(modelo)
+                respuesta = modelo_ia.generate_content(
+                    prompt,
+                    generation_config={"temperature": temperature},
+                )
+                texto = getattr(respuesta, "text", "") or ""
+                return texto.strip() or None
+            except Exception as e:
+                codigo = getattr(getattr(e, "response", None), "status_code", None)
+                print(f"[IA] Modelo '{modelo}' (intento {intento + 1}) falló: {e}")
+                if codigo in (429, 500, 503):
+                    time.sleep(4 + 3 * intento)
+                    continue
+                if codigo == 404:
+                    break
+                break
+    return None
 
 
 def _gestionar_json(respuesta_texto):
@@ -106,8 +144,8 @@ Responde SOLO con JSON válido, sin texto adicional, con esta estructura exacta:
 }}
 """
     try:
-        respuesta = model.generate_content(prompt)
-        data = _gestionar_json(respuesta.text)
+        texto = _generate(prompt)
+        data = _gestionar_json(texto or "")
         if not data:
             return None
         return {
@@ -138,8 +176,7 @@ Contexto del usuario:
 {contexto}
 """
     try:
-        respuesta = model.generate_content(prompt)
-        texto = respuesta.text.strip()
+        texto = _generate(prompt)
         return texto or None
     except Exception as e:
         print(f"[IA] Error respondiendo chat: {e}")

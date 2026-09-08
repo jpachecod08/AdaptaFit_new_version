@@ -54,6 +54,7 @@ import {
   Dumbbell as DumbbellIcon,
   User,
   Video,
+  Youtube,
   Edit,
   AlertTriangle,
 } from 'lucide-react';
@@ -131,122 +132,147 @@ const ProgressBar = styled(LinearProgress)(({ theme }) => ({
 }));
 
 // Base de datos de videos REALES y funcionales (probados)
+// Catálogo de videos REALES y verificados (139 ejercicios, sin repetir)
 const exerciseVideos = {
-  // ========== YOGA ==========
-  'saludo al sol': 'https://www.youtube.com/embed/UxRMcPdT0hA',
-  'saludo al sol a': 'https://www.youtube.com/embed/UxRMcPdT0hA',
-  'perro boca abajo': 'https://www.youtube.com/embed/6Lh8WlD_jJc',
-  'downward dog': 'https://www.youtube.com/embed/6Lh8WlD_jJc',
-  'postura del niño': 'https://www.youtube.com/embed/RB6V2rCmcRA',
-  'child pose': 'https://www.youtube.com/embed/RB6V2rCmcRA',
-  'gato vaca': 'https://www.youtube.com/embed/kqnua4rHVVA',
-  'cat cow': 'https://www.youtube.com/embed/kqnua4rHVVA',
-  'guerrero i': 'https://www.youtube.com/embed/ZiYrR-FZMFM',
-  'warrior i': 'https://www.youtube.com/embed/ZiYrR-FZMFM',
-  'guerrero ii': 'https://www.youtube.com/embed/ZiYrR-FZMFM',
-  'warrior ii': 'https://www.youtube.com/embed/ZiYrR-FZMFM',
-  'postura del árbol': 'https://www.youtube.com/embed/WDgmL4FA_UU',
-  'tree pose': 'https://www.youtube.com/embed/WDgmL4FA_UU',
-  'triángulo': 'https://www.youtube.com/embed/IGJxEfYxFO4',
-  'triangle pose': 'https://www.youtube.com/embed/IGJxEfYxFO4',
-  'postura del puente': 'https://www.youtube.com/embed/SUbDnRliLp0',
-  'bridge pose': 'https://www.youtube.com/embed/SUbDnRliLp0',
-  'postura del barco': 'https://www.youtube.com/embed/JWkAsS9RGe0',
-  'boat pose': 'https://www.youtube.com/embed/JWkAsS9RGe0',
-  'savasana': 'https://www.youtube.com/embed/L8P0XjL9_xQ',
-  
-  // ========== CARDIO ==========
-  'caminata': 'https://www.youtube.com/embed/Y5iLVgRvOYk',
-  'trote': 'https://www.youtube.com/embed/6dR4sQk2zSY',
-  'running': 'https://www.youtube.com/embed/6dR4sQk2zSY',
-  'bicicleta': 'https://www.youtube.com/embed/H3V3sC5fT6w',
-  'hiit': 'https://www.youtube.com/embed/ml6cT4AZdqI',
-  'burpees': 'https://www.youtube.com/embed/qLBImHhCXSw',
-  'jumping jacks': 'https://www.youtube.com/embed/4U6Uz9Z6w6I',
-
-  // ========== GIMNASIO ==========
-  'press de banca': 'https://www.youtube.com/embed/rT7DgCr-3pg',
-  'press de banca con mancuernas': 'https://www.youtube.com/embed/6qFrMJEzOCU',
-  'curl de bíceps': 'https://www.youtube.com/embed/ykJmrZ5v0Oo',
-  'curl de bíceps con mancuernas': 'https://www.youtube.com/embed/ykJmrZ5v0Oo',
-  'press militar con mancuernas': 'https://www.youtube.com/embed/qEwKCR5JCog',
-  'remo con mancuerna': 'https://www.youtube.com/embed/knB5Q4FN4ck',
-  'extensiones de tríceps': 'https://www.youtube.com/embed/0326dy_-CzM',
-  'sentadilla con barra': 'https://www.youtube.com/embed/aclHkVaku9U',
-  'peso muerto rumano': 'https://www.youtube.com/embed/1ZXobu7JvvE',
-  'prensa de piernas': 'https://www.youtube.com/embed/aclHkVaku9U',
-  'curl femoral': 'https://www.youtube.com/embed/BXm_cYw-5Wk',
-  'elevación de talones': 'https://www.youtube.com/embed/BXm_cYw-5Wk',
-  'plancha': 'https://www.youtube.com/embed/pSHjTRCQxIw',
-  'crunches': 'https://www.youtube.com/embed/Xyd_fa5zoEU',
-  'caminata inclinada': 'https://www.youtube.com/embed/Y5iLVgRvOYk',
-  'bicicleta estática': 'https://www.youtube.com/embed/H3V3sC5fT6w',
-
-  // ========== CALISTENIA - PRINCIPIANTE ==========
-  'flexiones': 'https://www.youtube.com/embed/IODxDxX7oi4',
-  'flexiones de rodillas': 'https://www.youtube.com/embed/lFR1GWy1Dcs',
-  'flexiones en pared': 'https://www.youtube.com/embed/QpMTk21EmaM',
-  'press de hombros con botella': 'https://www.youtube.com/embed/qEwKCR5JCog',
-  'elevaciones laterales': 'https://www.youtube.com/embed/uX_UioUHQGs',
-  'remo con peso casero': 'https://www.youtube.com/embed/knB5Q4FN4ck',
-  'sentadillas': 'https://www.youtube.com/embed/aclHkVaku9U',
-  'sentadillas asistidas': 'https://www.youtube.com/embed/hVJYYRXI4Co',
-  'zancadas': 'https://www.youtube.com/embed/QOVaHwm-Q6U',
-  'zancadas estáticas': 'https://www.youtube.com/embed/M6DZ0Dca17w',
-  'elevación de talones': 'https://www.youtube.com/embed/BXm_cYw-5Wk',
-  'puente de glúteos': 'https://www.youtube.com/embed/wPM8icPu6H8',
-  'sentadilla sumo': 'https://www.youtube.com/embed/kjlfpqXnyL8',
-  'marcha en el lugar': 'https://www.youtube.com/embed/9wl_AiNhYP0',
-  'jumping jacks suaves': 'https://www.youtube.com/embed/UpH7rm0cYbM',
-  'step touch': 'https://www.youtube.com/embed/dFO3Zjd4uEw',
-  'plancha de rodillas': 'https://www.youtube.com/embed/iDSHokfXqyA',
-  'bird dog': 'https://www.youtube.com/embed/ZdAHe9_HeEw',
-  'crunches básicos': 'https://www.youtube.com/embed/MKmrqcoCZ-M',
-
-  // ========== CALISTENIA - INTERMEDIO ==========
-  'flexiones estándar': 'https://www.youtube.com/embed/6qFrMJEzOCU',
-  'flexiones diamante': 'https://www.youtube.com/embed/pD3mD6WgykM',
-  'pike push-ups': 'https://www.youtube.com/embed/VnQU_lLBFW0',
-  'fondos en silla': 'https://www.youtube.com/embed/CVj69WdL0bk',
-  'remo invertido': 'https://www.youtube.com/embed/2Synad5Yo-g',
-  'plancha a flexión': 'https://www.youtube.com/embed/bsT2Rkma8H8',
-  'sentadillas completas': 'https://www.youtube.com/embed/k3joOwL4cvg',
-  'zancadas alternas': 'https://www.youtube.com/embed/tTej-ax9XiA',
-  'sentadilla búlgara': 'https://www.youtube.com/embed/lG3MsPmEQQk',
-  'peso muerto a una pierna': 'https://www.youtube.com/embed/FujJkRLG1Fg',
-  'saltos de sentadilla': 'https://www.youtube.com/embed/RVUgfoMW-UI',
-  'step-ups': 'https://www.youtube.com/embed/l4AA5d5mInQ',
-  'burpees modificados': 'https://www.youtube.com/embed/iUL2tndomms',
-  'mountain climbers': 'https://www.youtube.com/embed/cnyTQDSE884',
-  'high knees': 'https://www.youtube.com/embed/82pdtHaANGk',
-  'skaters': 'https://www.youtube.com/embed/9_jLW6VkU8A',
-  'plancha estándar': 'https://www.youtube.com/embed/9j8-dM55J0M',
-  'plancha lateral': 'https://www.youtube.com/embed/rCxF2nG9vQ0',
-  'russian twist': 'https://www.youtube.com/embed/nhFynCkYtD4',
-  'russian twists': 'https://www.youtube.com/embed/nhFynCkYtD4',
-  'bicycle crunches': 'https://www.youtube.com/embed/wpRI3xBhJmo',
-
-  // ========== CALISTENIA - AVANZADO ==========
-  'flexiones explosivas': 'https://www.youtube.com/embed/FRo3b_Pfw3M',
-  'flexiones archer': 'https://www.youtube.com/embed/KIEAbfk4cQU',
-  'handstand push-ups': 'https://www.youtube.com/embed/h0HjqYRlXYg',
-  'dominadas': 'https://www.youtube.com/embed/iBtL9nX2qOs',
-  'fondos': 'https://www.youtube.com/embed/0326dy_-CzM',
-  'fondos en paralelas': 'https://www.youtube.com/embed/0326dy_-CzM',
-  'muscle-up progression': 'https://www.youtube.com/embed/_iYvlSMgUGE',
-  'sentadillas pistol': 'https://www.youtube.com/embed/flQVCWBuVgk',
-  'sentadilla con salto alto': 'https://www.youtube.com/embed/RVUgfoMW-UI',
-  'zancadas con salto': 'https://www.youtube.com/embed/x3avm4QPINk',
-  'box jumps altos': 'https://www.youtube.com/embed/G-bxQY57mKc',
-  'nordic hamstring curls': 'https://www.youtube.com/embed/1YBuMhJNmxo',
-  'burpees completos': 'https://www.youtube.com/embed/qLBImHhCXSw',
-  'sprint en el lugar': 'https://www.youtube.com/embed/82pdtHaANGk',
-  'tuck jumps': 'https://www.youtube.com/embed/Yl7tEmpzknY',
-  'sprawls': 'https://www.youtube.com/embed/qLBImHhCXSw',
-  'plancha rkc': 'https://www.youtube.com/embed/zmybubRi1TU',
-  'l-sit hold': 'https://www.youtube.com/embed/flQVCWBuVgk',
-  'dragon flags': 'https://www.youtube.com/embed/RX_FLzq-nXk',
-  'ab wheel rollouts': 'https://www.youtube.com/embed/NWl2LEDmeTQ',
+    "Ab wheel rollouts": 'https://www.youtube.com/embed/_BHKT60P6bc',
+    "Bicicleta": 'https://www.youtube.com/embed/Ylxojxizoz8',
+    "Bicicleta de recuperación": 'https://www.youtube.com/embed/hE8v0rilslU',
+    "Bicicleta estática": 'https://www.youtube.com/embed/LL1FI5BbIgg',
+    "Bicicleta intervalos": 'https://www.youtube.com/embed/jRYK_jbQwUI',
+    "Bicicleta resistencia": 'https://www.youtube.com/embed/_VbcN81W0wM',
+    "Bicycle crunches": 'https://www.youtube.com/embed/cbKIDZ_XyjY',
+    "Bird dog": 'https://www.youtube.com/embed/hUIrLbMnglY',
+    "Box jumps altos": 'https://www.youtube.com/embed/jomMXLI4h24',
+    "Burpees completos": 'https://www.youtube.com/embed/EkK3oVBA__Q',
+    "Burpees con salto": 'https://www.youtube.com/embed/h4cf5Bik4Tg',
+    "Burpees modificados": 'https://www.youtube.com/embed/r2iRtTDNI_c',
+    "Caminata": 'https://www.youtube.com/embed/TWyguC7VVh8',
+    "Caminata inclinada": 'https://www.youtube.com/embed/h12VsoGyJdE',
+    "Carrera de ritmo": 'https://www.youtube.com/embed/JcaXE4HNuOI',
+    "Crunches": 'https://www.youtube.com/embed/HLAPlJhxqEE',
+    "Crunches básicos": 'https://www.youtube.com/embed/BzYrN4o5X5o',
+    "Cuerda de saltar": 'https://www.youtube.com/embed/zvhRGF_G_64',
+    "Curl de bíceps con mancuernas": 'https://www.youtube.com/embed/LQcQNJiVY24',
+    "Curl femoral": 'https://www.youtube.com/embed/CBCPBnMzsMI',
+    "Dominadas": 'https://www.youtube.com/embed/6E3tt4ajzSs',
+    "Dominadas asistidas": 'https://www.youtube.com/embed/lgE47t3dr2Q',
+    "Dominadas con peso": 'https://www.youtube.com/embed/1cfD0V35l_8',
+    "Dragon flags": 'https://www.youtube.com/embed/c7dblNviQqA',
+    "Elevaciones laterales": 'https://www.youtube.com/embed/zBqZqAjCnR4',
+    "Elevación de piernas acostado": 'https://www.youtube.com/embed/hTm5SjiW4gY',
+    "Elevación de piernas colgado": 'https://www.youtube.com/embed/98oNxE56i3g',
+    "Elevación de talones": 'https://www.youtube.com/embed/EyHze_DHQq0',
+    "Elevación de talones con peso": 'https://www.youtube.com/embed/fKt3Q0peC0Y',
+    "Escaladores rápidos": 'https://www.youtube.com/embed/mD3Rn0TQbYA',
+    "Extensiones de tríceps": 'https://www.youtube.com/embed/FELcywKlkqE',
+    "Fartlek de 40 minutos": 'https://www.youtube.com/embed/_ZwyRKRFQhU',
+    "Flexiones archer": 'https://www.youtube.com/embed/Gdej5nhhb38',
+    "Flexiones de rodillas": 'https://www.youtube.com/embed/YN5pE2JmzHM',
+    "Flexiones diamante": 'https://www.youtube.com/embed/bZJW_GR9jUk',
+    "Flexiones en pared": 'https://www.youtube.com/embed/p8ZpiJTMKew',
+    "Flexiones estándar": 'https://www.youtube.com/embed/S44aVCTshH8',
+    "Flexiones explosivas": 'https://www.youtube.com/embed/iqj68r6CaDo',
+    "Flow de transiciones": 'https://www.youtube.com/embed/o31E7vjfs70',
+    "Fondos con peso": 'https://www.youtube.com/embed/jm9ESPWN7tA',
+    "Fondos en paralelas": 'https://www.youtube.com/embed/LbsqDJe4EFc',
+    "Fondos en silla": 'https://www.youtube.com/embed/oVs-HluNKP0',
+    "Gato-vaca (Marjaryasana-Bitilasana)": 'https://www.youtube.com/embed/NVNoJph0fw0',
+    "Guerrero I (Virabhadrasana I)": 'https://www.youtube.com/embed/_BlKPIe8wOo',
+    "Guerrero II (Virabhadrasana II)": 'https://www.youtube.com/embed/-8hKpr5dxFM',
+    "HIIT en bicicleta": 'https://www.youtube.com/embed/LMJKTmbdt8w',
+    "Handstand push-ups": 'https://www.youtube.com/embed/WxgJS48wf1M',
+    "High knees": 'https://www.youtube.com/embed/QPfOZ0e30xg',
+    "Hip thrust con barra": 'https://www.youtube.com/embed/14wE63cK26I',
+    "Intervalos de carrera": 'https://www.youtube.com/embed/GVn9mbv_4aA',
+    "Intervalos intensos": 'https://www.youtube.com/embed/P1HyMCX8NJs',
+    "Jumping jacks suaves": 'https://www.youtube.com/embed/vjKGK90UJHQ',
+    "L-sit hold": 'https://www.youtube.com/embed/a4qGW79QtrE',
+    "Marcha en el lugar": 'https://www.youtube.com/embed/gchiG1iIMXc',
+    "Mountain climbers": 'https://www.youtube.com/embed/7W4JEfEKuC4',
+    "Muscle-up progression": 'https://www.youtube.com/embed/jsdW9-AEbBk',
+    "Natación a ritmo": 'https://www.youtube.com/embed/vKJ188If6l0',
+    "Natación suave": 'https://www.youtube.com/embed/FTVqUdM4EBI',
+    "Nordic hamstring curls": 'https://www.youtube.com/embed/QZdcn8POwbw',
+    "Perro boca abajo (Adho Mukha Svanasana)": 'https://www.youtube.com/embed/1RzzTuBLFI4',
+    "Peso muerto a una pierna": 'https://www.youtube.com/embed/2-5C8T_f0NY',
+    "Peso muerto con carga": 'https://www.youtube.com/embed/0XL4cZR2Ink',
+    "Peso muerto convencional": 'https://www.youtube.com/embed/kancsOn7CJY',
+    "Peso muerto rumano": 'https://www.youtube.com/embed/8qNrTuZ0rXM',
+    "Pike push-ups": 'https://www.youtube.com/embed/eG20L9cl81w',
+    "Pincha mayurasana": 'https://www.youtube.com/embed/9J2zHLkgXqo',
+    "Plancha": 'https://www.youtube.com/embed/3AM7L2k7BEw',
+    "Plancha RKC": 'https://www.youtube.com/embed/9uX34tkHUto',
+    "Plancha a flexión": 'https://www.youtube.com/embed/mTs83kUu7rc',
+    "Plancha con elevación de pierna": 'https://www.youtube.com/embed/Fx4yTjyfSSc',
+    "Plancha con peso": 'https://www.youtube.com/embed/FtBpfQVvVl0',
+    "Plancha de rodillas": 'https://www.youtube.com/embed/kUGXWrNgVLQ',
+    "Plancha dinámica": 'https://www.youtube.com/embed/02k0CQujgeM',
+    "Plancha estándar": 'https://www.youtube.com/embed/i1s-WoN720Y',
+    "Plancha lateral": 'https://www.youtube.com/embed/fNsxKTKfMNI',
+    "Postura de la montaña (Tadasana)": 'https://www.youtube.com/embed/mLW6ykrlIEs',
+    "Postura de la pierna en la pared (Viparita Karani)": 'https://www.youtube.com/embed/OVJzZP3aP4E',
+    "Postura de la rueda (Chakrasana)": 'https://www.youtube.com/embed/3yNPdgNHkOo',
+    "Postura del cuervo (Bakasana)": 'https://www.youtube.com/embed/3tKCo7fcs6Q',
+    "Postura del loto (Padmasana)": 'https://www.youtube.com/embed/DWpnpaWHGew',
+    "Postura del niño (Balasana)": 'https://www.youtube.com/embed/cFcNQjKDI58',
+    "Postura del puente (Setu Bandhasana)": 'https://www.youtube.com/embed/Hgca0II_CKI',
+    "Postura del triángulo (Trikonasana)": 'https://www.youtube.com/embed/h60lC7mCaFA',
+    "Postura del árbol (Vrksasana)": 'https://www.youtube.com/embed/06dOFQVC2ZQ',
+    "Prensa de piernas": 'https://www.youtube.com/embed/CZrG20G5B1g',
+    "Press de banca con barra": 'https://www.youtube.com/embed/TAH8RxOS0VI',
+    "Press de banca con carga": 'https://www.youtube.com/embed/xUHWtz9STnk',
+    "Press de banca con mancuernas": 'https://www.youtube.com/embed/48L0oQApm_0',
+    "Press de hombros con botella": 'https://www.youtube.com/embed/cLYnWiQC9Gs',
+    "Press inclinado con mancuernas": 'https://www.youtube.com/embed/DfgI6sGn9iQ',
+    "Press militar con barra": 'https://www.youtube.com/embed/if97enQvM70',
+    "Press militar con mancuernas": 'https://www.youtube.com/embed/6YG2ETOwDR8',
+    "Puente de glúteos": 'https://www.youtube.com/embed/M-mnbbpJmXI',
+    "Remo con barra": 'https://www.youtube.com/embed/sr_U0jBE89A',
+    "Remo con mancuerna": 'https://www.youtube.com/embed/QEamGpgkTSo',
+    "Remo con peso casero": 'https://www.youtube.com/embed/RgrfbOugq6s',
+    "Remo ergómetro": 'https://www.youtube.com/embed/A-35F9TR0OA',
+    "Remo invertido": 'https://www.youtube.com/embed/AIM_qZjSFUU',
+    "Remo sprint": 'https://www.youtube.com/embed/nG9Vdvf5nzo',
+    "Respiración alterna (Nadi Shodhana)": 'https://www.youtube.com/embed/JDD8r65WfkA',
+    "Respiración consciente (Pranayama)": 'https://www.youtube.com/embed/UzyY2JSVayE',
+    "Russian twist con peso": 'https://www.youtube.com/embed/MKfv0WiTeEQ',
+    "Russian twists": 'https://www.youtube.com/embed/wkD8rjkodUI',
+    "Saltos de sentadilla": 'https://www.youtube.com/embed/IfqrxS_-8oU',
+    "Saludo al sol A": 'https://www.youtube.com/embed/Gd-4pVMcPGs',
+    "Saludo al sol B": 'https://www.youtube.com/embed/O-ak5CiWPfQ',
+    "Savasana": 'https://www.youtube.com/embed/21lWeGNvjV4',
+    "Savasana (cadáver)": 'https://www.youtube.com/embed/-Kulgd-R538',
+    "Secuencia avanzada": 'https://www.youtube.com/embed/ytxtKJGfAWE',
+    "Secuencia de guerreros": 'https://www.youtube.com/embed/TMkC5IyFxyo',
+    "Secuencia de pie": 'https://www.youtube.com/embed/u_1zoVPqNBI',
+    "Sentadilla búlgara": 'https://www.youtube.com/embed/-3d_wieNNHA',
+    "Sentadilla búlgara con peso": 'https://www.youtube.com/embed/Xfa3Ql_NwmE',
+    "Sentadilla con barra": 'https://www.youtube.com/embed/qsAkuNORgmk',
+    "Sentadilla con carga máxima": 'https://www.youtube.com/embed/NHD0vH7XXgw',
+    "Sentadilla con salto alto": 'https://www.youtube.com/embed/c-b6w0EyqIk',
+    "Sentadilla profunda con barra": 'https://www.youtube.com/embed/M0UsWb2iNag',
+    "Sentadilla sumo": 'https://www.youtube.com/embed/PFh39yoRSes',
+    "Sentadillas asistidas": 'https://www.youtube.com/embed/Wf5vveSPtwg',
+    "Sentadillas completas": 'https://www.youtube.com/embed/Bg-cs9JJmfo',
+    "Sentadillas pistol": 'https://www.youtube.com/embed/IfESGr170DY',
+    "Skaters": 'https://www.youtube.com/embed/qM5jviFhw9U',
+    "Skipping suave": 'https://www.youtube.com/embed/3VhOTIsDOZM',
+    "Sprawls": 'https://www.youtube.com/embed/g9u-JcVXYFM',
+    "Sprint en el lugar": 'https://www.youtube.com/embed/CdgSGGwN9YI',
+    "Sprints en bicicleta": 'https://www.youtube.com/embed/AI9Zrp-bVnw',
+    "Sprints en colina": 'https://www.youtube.com/embed/FRTHV5GD3YY',
+    "Step touch": 'https://www.youtube.com/embed/wH9hsR7Ck_M',
+    "Step-ups": 'https://www.youtube.com/embed/yHyrYdgE36M',
+    "Subidas al step rápidas": 'https://www.youtube.com/embed/OIS54N-ZYGY',
+    "Trote continuo": 'https://www.youtube.com/embed/PFo2afxqzHI',
+    "Trote en el lugar": 'https://www.youtube.com/embed/UvD9OXngEd4',
+    "Trote ligero de recuperación": 'https://www.youtube.com/embed/WTurO6TfIrE',
+    "Trote suave": 'https://www.youtube.com/embed/NNU04_UCWyM',
+    "Tuck jumps": 'https://www.youtube.com/embed/YHVrLfVjgwQ',
+    "Zancadas alternas": 'https://www.youtube.com/embed/AwVfFx7ToBk',
+    "Zancadas con barra": 'https://www.youtube.com/embed/YinDJm8PLhg',
+    "Zancadas con salto": 'https://www.youtube.com/embed/LBBbKa--AEs',
+    "Zancadas estáticas": 'https://www.youtube.com/embed/FO5KJzV2qb8',
 };
 
 // Componente principal
@@ -270,7 +296,8 @@ const MiRutina = () => {
   const [videoDialog, setVideoDialog] = useState({
     open: false,
     exerciseName: '',
-    videoUrl: ''
+    videoUrl: '',
+    isSearchFallback: false
   });
   const [stats, setStats] = useState(null);
   const [expandedDay, setExpandedDay] = useState(0);
@@ -818,114 +845,69 @@ const handleRegeneratePlan = async () => {
     }
   };
   // Función mejorada para buscar video según el tipo de entrenamiento
+    const normalizeExerciseName = (s) => String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
   const findExerciseVideo = (exerciseName, trainingType = null) => {
-    const name = exerciseName.toLowerCase().trim();
-    
-    // Mapa de palabras clave por tipo de entrenamiento
-    const yogaKeywords = ['saludo', 'sol', 'perro', 'boca abajo', 'downward', 'guerrero', 'warrior', 'árbol', 'tree', 'triángulo', 'triangle', 'puente', 'bridge', 'barco', 'boat', 'plancha lateral', 'side plank', 'cuervo', 'crow', 'rueda', 'wheel', 'savasana', 'cadáver', 'pranayama', 'respiración', 'viparita', 'karani', 'loto', 'padmasana', 'gato', 'vaca', 'cat', 'cow', 'niño', 'child'];
-    
-    const cardioKeywords = ['caminata', 'walking', 'trote', 'jogging', 'carrera', 'running', 'bicicleta', 'cycling', 'hiit', 'intervalos', 'saltos', 'jump', 'burpee'];
-    
-    const gymKeywords = ['press', 'banca', 'sentadilla', 'squat', 'dominada', 'pull up', 'curl', 'bíceps', 'tríceps', 'peso muerto', 'deadlift', 'remo', 'row', 'fondos', 'dip', 'elevaciones', 'lateral raises', 'mountain climbers', 'jumping jacks'];
-    
-    const coreKeywords = ['plancha', 'plank', 'crunch', 'abdominal', 'leg raises', 'elevación de piernas', 'russian twist', 'bird dog'];
-    
-    // Determinar el tipo de entrenamiento si no se proporcionó
-    let effectiveTrainingType = trainingType;
-    if (!effectiveTrainingType && userProfile?.profile?.training_type) {
-      effectiveTrainingType = userProfile.profile.training_type;
-    }
-    
-    // Función para buscar video por palabras clave específicas
-    const searchByKeywords = (keywords, videoUrl) => {
-      for (const keyword of keywords) {
-        if (name.includes(keyword)) {
-          return videoUrl;
-        }
-      }
-      return null;
-    };
-    
-    // 1. Buscar coincidencia EXACTA primero
+    const name = normalizeExerciseName(exerciseName);
+    const effectiveTrainingType = trainingType || userProfile?.profile?.training_type || null;
+
+    // 1) Coincidencia EXACTA (normalizada: ignorando acentos, mayúsculas y paréntesis)
     for (const [key, videoUrl] of Object.entries(exerciseVideos)) {
-      if (name === key.toLowerCase()) {
-        console.log(`🎯 Video exacto encontrado para: ${exerciseName} → ${key}`);
+      if (normalizeExerciseName(key) === name) {
         return videoUrl;
       }
     }
-    
-    // 2. Buscar coincidencia PARCIAL
+
+    // 2) Coincidencia PARCIAL (norm.: 'gage' en 'Postura del gato-vaca', etc.)
     for (const [key, videoUrl] of Object.entries(exerciseVideos)) {
-      if (name.includes(key) || key.includes(name)) {
-        console.log(`🎯 Video parcial encontrado para: ${exerciseName} → ${key}`);
+      const k = normalizeExerciseName(key);
+      if (name.includes(k) || k.includes(name)) {
         return videoUrl;
       }
     }
-    
-    // 3. Buscar según el tipo de entrenamiento del usuario
-    if (effectiveTrainingType === 'yoga') {
-      // Buscar en videos de yoga
-      const yogaVideo = searchByKeywords(yogaKeywords, 'https://www.youtube.com/embed/HRWkEmc_Xac');
-      if (yogaVideo) {
-        console.log(`🧘 Video de Yoga para: ${exerciseName}`);
-        return yogaVideo;
-      }
-      // Video genérico de yoga
-      return 'https://www.youtube.com/embed/HRWkEmc_Xac';
-    }
-    
-    if (effectiveTrainingType === 'cardio') {
-      // Buscar en videos de cardio
-      const cardioVideo = searchByKeywords(cardioKeywords, 'https://www.youtube.com/embed/kVnTz83jjqA');
-      if (cardioVideo) {
-        console.log(`🏃 Video de Cardio para: ${exerciseName}`);
-        return cardioVideo;
-      }
-      // Video genérico de cardio
-      return 'https://www.youtube.com/embed/kVnTz83jjqA';
-    }
-    
-    if (effectiveTrainingType === 'gym') {
-      // Buscar en videos de gym
-      const gymVideo = searchByKeywords(gymKeywords, 'https://www.youtube.com/embed/rT7DgCr-3pg');
-      if (gymVideo) {
-        console.log(`🏋️ Video de Gimnasio para: ${exerciseName}`);
-        return gymVideo;
-      }
-      // Video genérico de gym
-      return 'https://www.youtube.com/embed/rT7DgCr-3pg';
-    }
-    
-    // 4. Buscar por categoría específica (core, etc.)
-    const coreVideo = searchByKeywords(coreKeywords, 'https://www.youtube.com/embed/pSHjTRCQxIw');
-    if (coreVideo) {
-      console.log(`💪 Video de Core para: ${exerciseName}`);
-      return coreVideo;
-    }
-    
-    // 5. Video por defecto (flexiones)
-    console.log(`🎬 Video por defecto para: ${exerciseName}`);
+
+    // 3) Video genérico real del tipo de entrenamiento (todos verificados)
+    if (effectiveTrainingType === 'yoga') return 'https://www.youtube.com/embed/1RzzTuBLFI4';
+    if (effectiveTrainingType === 'cardio') return 'https://www.youtube.com/embed/TWyguC7VVh8';
+    if (effectiveTrainingType === 'gym' || effectiveTrainingType === 'calisthenics') return 'https://www.youtube.com/embed/qsAkuNORgmk';
     return 'https://www.youtube.com/embed/IODxDxX7oi4';
+  };
+
+  const toEmbedUrl = (url) => {
+    if (!url) return '';
+    if (url.includes('/embed/')) return url;
+    const m = url.match(/(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? `https://www.youtube.com/embed/${m[1]}` : url;
   };
 
   const handleVideoOpen = (ex) => {
     const exerciseName = ex.name || ex;
-    // Obtener el tipo de entrenamiento del perfil del usuario
     const trainingType = userProfile?.profile?.training_type || null;
-    
-    // 1) Prioridad 1: video exacto del backend (si existe)
-    let videoUrl = ex?.video_url || '';
-    // 2) Prioridad 2: si no hay video exacto, buscar con el mapeo curado local
+
+    // 1) Prioridad: video exacto del backend (si existe) o el catálogo local verificado
+    let videoUrl = toEmbedUrl(ex?.video_url || '');
     if (!videoUrl) {
       videoUrl = findExerciseVideo(exerciseName, trainingType);
     }
-    
-    console.log(`📹 Abriendo video para: ${exerciseName} | Tipo: ${trainingType} | URL: ${videoUrl}`);
-    
+
+    // 2) Fallback seguro: búsqueda en YouTube (se abre en pestaña nueva, nunca iframe roto)
+    let isSearchFallback = false;
+    if (!videoUrl || !videoUrl.includes('/youtube.com/embed/')) {
+      isSearchFallback = true;
+      videoUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ex?.video_query || exerciseName)}`;
+    }
+
     setVideoDialog({
       open: true,
       exerciseName,
-      videoUrl: videoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(ex?.video_query || exerciseName)}`
+      videoUrl,
+      isSearchFallback
     });
   };
 
@@ -1886,25 +1868,47 @@ const handleRegeneratePlan = async () => {
             </IconButton>
           </DialogTitle>
           <DialogContent sx={{ p: 0 }}>
-            <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
-              <iframe
-                src={videoDialog.videoUrl}
-                title={`Video tutorial de ${videoDialog.exerciseName}`}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  border: 'none'
-                }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                // 🚀 ESTAS DOS LÍNEAS SON LA SOLUCIÓN MÁGICA 🚀
-                referrerPolicy="strict-origin-when-cross-origin"
-                srcDoc={null}
-              />
-            </Box>
+            {videoDialog.isSearchFallback ? (
+              <Box sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="h6" gutterBottom>
+                  {videoDialog.exerciseName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  No encontramos un video verificado para este ejercicio.
+                </Typography>
+                <Button
+                  component="a"
+                  href={videoDialog.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  startIcon={<Youtube />}
+                >
+                  Ver tutorial en YouTube
+                </Button>
+              </Box>
+            ) : (
+              <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                <iframe
+                  src={videoDialog.videoUrl}
+                  title={`Video tutorial de ${videoDialog.exerciseName}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  srcDoc={null}
+                />
+              </Box>
+            )}
           </DialogContent>
         </Dialog>
 
