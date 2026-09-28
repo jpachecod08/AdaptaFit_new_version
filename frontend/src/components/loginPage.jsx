@@ -1,274 +1,334 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  User,
-  Dumbbell,
-  Loader2,
-  AlertCircle
+  Eye, EyeOff, Mail, Lock, Dumbbell, Loader2, AlertCircle,
+  TrendingUp, Users, Trophy, Flame, ArrowRight, CheckCircle,
 } from "lucide-react";
 import axios from 'axios';
 import { API_URL } from '../config';
 
 const LoginPage = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const [rol, setRol] = useState("usuario");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  try {
-    const loginUrl = `${API_URL}/api/users/login/`;
-    console.log("Enviando login a:", loginUrl);
-    
-    // IMPORTANTE: El serializador AuthTokenSerializer espera 'email', no 'username'
-    const response = await axios.post(
-      loginUrl,
-      {
-        email: email,  // ← CORRECCIÓN: Usar 'email' no 'username'
-        password: password,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+    try {
+      const loginUrl = `${API_URL}/api/users/login/`;
+      const response = await axios.post(
+        loginUrl,
+        { email, password },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      localStorage.setItem('authToken', response.data.token);
+      localStorage.setItem('userRole', response.data.tipo_usuario);
+      localStorage.setItem('userData', JSON.stringify({
+        id: response.data.user_id,
+        email: response.data.email,
+        nombre: response.data.nombre,
+        tipo_usuario: response.data.tipo_usuario,
+      }));
+
+      if (onLogin && typeof onLogin === 'function') {
+        onLogin(response.data.token, response.data.tipo_usuario);
       }
-    );
+    } catch (error) {
+      console.error("Error en login:", error);
 
-    console.log("Login exitoso:", response.data);
-    
-    // IMPORTANTE: Guardar en localStorage con los nombres que App.jsx espera
-    localStorage.setItem('authToken', response.data.token);
-    localStorage.setItem('userRole', response.data.tipo_usuario);
-    
-    // También guardar datos completos por si acaso
-    localStorage.setItem('userData', JSON.stringify({
-      id: response.data.user_id,
-      email: response.data.email,
-      nombre: response.data.nombre,
-      tipo_usuario: response.data.tipo_usuario
-    }));
-    
-    // CORRECCIÓN: Llamar a onLogin con SOLO token y role (no objeto completo)
-    if (onLogin && typeof onLogin === 'function') {
-      console.log("Llamando a onLogin con:", response.data.token, response.data.tipo_usuario);
-      onLogin(response.data.token, response.data.tipo_usuario);
-    }
-
-  } catch (error) {
-    console.error("Error completo en login:", error);
-    console.error("Respuesta del error:", error.response?.data);
-    
-    if (error.response) {
-      if (error.response.status === 404) {
-        setError("URL de login incorrecta. Verifica la configuración.");
-      } else if (error.response.status === 400) {
-        // Mostrar mensajes de error específicos del backend
-        if (error.response.data.error) {
-          setError(error.response.data.error);
-        } else if (error.response.data.details) {
-          // Mostrar detalles específicos del serializer
-          const details = error.response.data.details;
-          if (details.email) {
-            setError(details.email[0]);
-          } else if (details.password) {
-            setError(details.password[0]);
-          } else if (details.non_field_errors) {
-            setError(details.non_field_errors[0]);
-          } else {
-            setError("Error en credenciales");
-          }
-        } else if (error.response.data.non_field_errors) {
-          setError(error.response.data.non_field_errors[0]);
+      if (error.response) {
+        if (error.response.status === 404) {
+          setError("URL de login incorrecta. Verifica la configuración.");
+        } else if (error.response.status === 400) {
+          const data = error.response.data;
+          if (data.error) setError(data.error);
+          else if (data.details?.email) setError(data.details.email[0]);
+          else if (data.details?.password) setError(data.details.password[0]);
+          else if (data.details?.non_field_errors) setError(data.details.non_field_errors[0]);
+          else if (data.non_field_errors) setError(data.non_field_errors[0]);
+          else setError("Email o contraseña incorrectos");
         } else {
-          setError("Email o contraseña incorrectos");
+          setError(`Error del servidor (${response.status})`);
         }
+      } else if (error.request) {
+        setError("No se pudo conectar al servidor. Verifica que esté corriendo.");
       } else {
-        setError(`Error del servidor (${error.response.status})`);
+        setError("Error: " + error.message);
       }
-    } else if (error.request) {
-      setError("No se pudo conectar al servidor. Verifica que esté corriendo.");
-    } else {
-      setError("Error: " + error.message);
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  // ... resto del código IGUAL (sin cambios en el JSX)
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-      
-      {/* PANEL IZQUIERDO */}
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+
+      {/* ================= PANEL IZQUIERDO (Decorativo) ================= */}
       <motion.div
         initial={{ opacity: 0, x: -60 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7 }}
-        className="hidden md:flex flex-col justify-center items-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-12"
+        className="hidden lg:flex flex-col justify-between relative overflow-hidden
+                   bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900
+                   text-white p-12"
       >
-        <img
-          src="/login-fitness.png"
-          alt="Entrenamiento IA"
-          className="rounded-2xl shadow-2xl mb-10 max-w-md"
-        />
+        {/* Gradientes decorativos */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-lime-400/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-        <h2 className="text-4xl font-extrabold mb-4">
-          AdaptaFit
-        </h2>
+        {/* Logo + Marca */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-gradient-to-br from-emerald-400 to-lime-400 p-3 rounded-2xl shadow-lg shadow-emerald-500/30">
+              <Dumbbell size={28} className="text-slate-900" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight">AdaptaFit</h2>
+              <p className="text-xs text-emerald-300 font-medium uppercase tracking-widest">
+                Entrenamiento Real
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <p className="text-center text-slate-300 max-w-md text-lg">
-          Entrenamiento inteligente, personalizado y adaptado a tu progreso
-          mediante inteligencia artificial.
-        </p>
+        {/* Hero */}
+        <div className="relative z-10 my-8">
+          {/* Ilustración CSS (sin imagen externa) */}
+          <div className="mb-8 flex justify-center">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="relative"
+            >
+              {/* Círculo principal */}
+              <div className="w-56 h-56 rounded-full bg-gradient-to-br from-emerald-400 to-lime-400 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
+                <div className="w-48 h-48 rounded-full bg-slate-900 flex items-center justify-center">
+                  <Flame size={80} className="text-lime-400" strokeWidth={1.5} />
+                </div>
+              </div>
+              {/* Íconos flotantes */}
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 3 }}
+                className="absolute -top-4 -right-4 bg-white text-slate-900 p-3 rounded-2xl shadow-xl"
+              >
+                <TrendingUp size={24} className="text-emerald-500" />
+              </motion.div>
+              <motion.div
+                animate={{ y: [0, 10, 0] }}
+                transition={{ repeat: Infinity, duration: 3.5 }}
+                className="absolute -bottom-4 -left-4 bg-white text-slate-900 p-3 rounded-2xl shadow-xl"
+              >
+                <Trophy size={24} className="text-amber-500" />
+              </motion.div>
+            </motion.div>
+          </div>
+
+          <h1 className="text-4xl font-extrabold leading-tight mb-4 text-center">
+            Tu progreso, <br />
+            <span className="bg-gradient-to-r from-emerald-400 to-lime-400 bg-clip-text text-transparent">
+              medido y mejorado
+            </span>
+          </h1>
+
+          <p className="text-center text-slate-300 max-w-md mx-auto text-lg leading-relaxed">
+            Tu entrenador diseña la rutina. Tú solo te enfocas en entrenar
+            y registrar tu progreso. Nosotros nos encargamos del resto.
+          </p>
+        </div>
+
+        {/* Stats decorativos */}
+        <div className="relative z-10 grid grid-cols-3 gap-4">
+          <StatCard icon={<Users size={20} />} label="Clientes" value="+500" />
+          <StatCard icon={<Dumbbell size={20} />} label="Rutinas" value="+1.2k" />
+          <StatCard icon={<TrendingUp size={20} />} label="Progreso" value="98%" />
+        </div>
       </motion.div>
 
-      {/* PANEL DERECHO */}
-      <div className="flex items-center justify-center bg-slate-50 p-6">
+      {/* ================= PANEL DERECHO (Formulario) ================= */}
+      <div className="flex items-center justify-center bg-slate-50 p-6 lg:p-12">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8"
+          className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 lg:p-10"
         >
-          {/* LOGO */}
-          <div className="flex flex-col items-center mb-8">
-            <div className="bg-blue-600 text-white p-4 rounded-2xl mb-3 shadow-md">
-              <Dumbbell size={30} />
+          {/* Logo móvil (aparece solo en pantallas pequeñas) */}
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-emerald-500 to-lime-500 p-3 rounded-2xl shadow-lg">
+              <Dumbbell size={24} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold">
-              Iniciar sesión
+            <h2 className="text-2xl font-extrabold text-slate-900">AdaptaFit</h2>
+          </div>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-extrabold text-slate-900 mb-2">
+              Bienvenido de nuevo
             </h1>
-            <p className="text-gray-500 text-sm text-center mt-1">
-              Accede a tu cuenta y genera rutinas con IA
+            <p className="text-slate-500 text-sm">
+              Ingresa tus credenciales para continuar con tu entrenamiento
             </p>
           </div>
 
-          {/* SELECTOR DE ROL */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => setRol("usuario")}
-              className={`py-2 rounded-lg font-medium transition
-                ${rol === "usuario"
-                  ? "bg-blue-600 text-white shadow"
-                  : "bg-gray-100 hover:bg-gray-200"}`}
-            >
-              <User className="inline mr-2" size={16} />
-              Usuario
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRol("entrenador")}
-              className={`py-2 rounded-lg font-medium transition
-                ${rol === "entrenador"
-                  ? "bg-blue-600 text-white shadow"
-                  : "bg-gray-100 hover:bg-gray-200"}`}
-            >
-              <Dumbbell className="inline mr-2" size={16} />
-              Entrenador
-            </button>
-          </div>
-
-          {/* MENSAJE DE ERROR */}
+          {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-start">
-              <AlertCircle className="mr-2 mt-0.5 flex-shrink-0" size={16} />
-              <span className="text-sm">{error}</span>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg flex items-start gap-3"
+            >
+              <AlertCircle className="flex-shrink-0 mt-0.5" size={18} />
+              <span className="text-sm font-medium">{error}</span>
+            </motion.div>
           )}
 
-          {/* FORM */}
-          <form onSubmit={handleSubmit}>
-            {/* EMAIL */}
-            <div className="mb-4">
-              <label className="text-sm font-medium text-gray-700">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">
                 Correo electrónico
               </label>
-              <div className="relative mt-1">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="correo@ejemplo.com"
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                  placeholder="tucorreo@ejemplo.com"
                   disabled={loading}
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl
+                             focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100
+                             focus:outline-none transition-all disabled:opacity-50 text-slate-900
+                             placeholder:text-slate-400"
                 />
               </div>
             </div>
 
-            {/* PASSWORD */}
-            <div className="mb-6">
-              <label className="text-sm font-medium text-gray-700">
+            {/* Password */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">
                 Contraseña
               </label>
-              <div className="relative mt-1">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
                   disabled={loading}
+                  className="w-full pl-12 pr-12 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl
+                             focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100
+                             focus:outline-none transition-all disabled:opacity-50 text-slate-900
+                             placeholder:text-slate-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                   disabled={loading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* BOTÓN */}
+            {/* Olvidé mi contraseña */}
+            <div className="flex justify-end">
+              <a
+                href="/password-reset"
+                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
+
+            {/* Botón */}
             <motion.button
               whileHover={{ scale: loading ? 1 : 1.02 }}
-              whileTap={{ scale: loading ? 1 : 0.97 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-lg font-semibold shadow-md transition flex items-center justify-center"
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500
+                         hover:from-emerald-700 hover:to-emerald-600
+                         disabled:from-emerald-300 disabled:to-emerald-300
+                         text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/30
+                         transition-all flex items-center justify-center gap-2 text-base"
             >
               {loading ? (
                 <>
-                  <Loader2 className="animate-spin mr-2" size={20} />
+                  <Loader2 className="animate-spin" size={20} />
                   Iniciando sesión...
                 </>
               ) : (
-                'Iniciar sesión'
+                <>
+                  Iniciar sesión
+                  <ArrowRight size={20} />
+                </>
               )}
             </motion.button>
           </form>
 
-          {/* FOOTER */}
-          <div className="text-center mt-6 text-sm text-gray-500">
-            ¿No tienes cuenta?{" "}
-            <a
-              href="/register"
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Crear cuenta
-            </a>
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider">
+              ¿Aún no tienes cuenta?
+            </span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* Registro */}
+          <a
+            href="/register"
+            className="block w-full text-center py-3.5 border-2 border-slate-200 rounded-xl
+                       text-slate-700 font-semibold hover:border-emerald-500 hover:text-emerald-600
+                       transition-all"
+          >
+            Crear cuenta nueva
+          </a>
+
+          {/* Feature hints */}
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+              <CheckCircle size={14} className="text-emerald-500" />
+              <span>Registra tus series y pesos en segundos</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+              <CheckCircle size={14} className="text-emerald-500" />
+              <span>Alertas automáticas para subir carga</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <CheckCircle size={14} className="text-emerald-500" />
+              <span>Tu rutina siempre lista, sin importar cuándo entrenes</span>
+            </div>
           </div>
         </motion.div>
       </div>
     </div>
   );
 };
+
+// Componente auxiliar para los stats decorativos del panel izquierdo
+const StatCard = ({ icon, label, value }) => (
+  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 text-center">
+    <div className="flex justify-center mb-1 text-lime-400">
+      {icon}
+    </div>
+    <p className="text-xl font-extrabold text-white">{value}</p>
+    <p className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">{label}</p>
+  </div>
+);
 
 export default LoginPage;

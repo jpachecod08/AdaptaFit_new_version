@@ -10,8 +10,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from .serializers import WorkoutPlanSerializer
-from .models import WorkoutPlan, WorkoutDay, Exercise, UserProgress, WorkoutExercise
+from .models import WorkoutPlan, WorkoutDay, Exercise, UserProgress, WorkoutExercise, ExerciseTemplate, RoutineTemplate, SessionTemplate, SessionExerciseSlot,ClientAssignment, SessionLog, SetLog, ExerciseProgression
 from users.models import UserProfile
+from .progression import evaluate_progression
+from decimal import Decimal
 from django.db.models import Count, Avg, Q
 from . import ai_engine
 from .video_catalog import video_embed_url
@@ -1705,3 +1707,697 @@ def analisis_progreso(request):
     except Exception as e:
         print(f"[ANALISIS] Error: {e}")
         return Response({'error': 'Error al analizar progreso'}, status=500)
+
+
+# ---------- HELPERS ----------
+def _serialize_exercise_template(obj):
+    return {
+        'id': obj.id,
+        'name': obj.name,
+        'muscle_group': obj.muscle_group,
+        'muscle_group_display': obj.get_muscle_group_display(),
+        'equipment': obj.equipment,
+        'description': obj.description,
+        'video_url': obj.video_url,
+        'image_url': obj.image.url if obj.image else None,    # ← NUEVO
+        'increment_type': obj.increment_type,
+        'increment_kg': obj.get_increment_kg(),
+        'plate_weight_kg': float(obj.plate_weight_kg) if obj.plate_weight_kg else None,
+        'custom_increment_kg': float(obj.custom_increment_kg) if obj.custom_increment_kg else None,
+    }
+
+
+def _serialize_slot(slot):
+    return {
+        'id': slot.id,
+        'slot_id': slot.id,
+        'order': slot.order,
+        'role': slot.role,
+        'exercise_template_id': slot.exercise_template_id,
+        'exercise_name': slot.exercise_template.name,
+        'muscle_group': slot.exercise_template.muscle_group,
+        'equipment': slot.exercise_template.equipment,
+        'video_url': slot.exercise_template.video_url,
+        'image_url': slot.exercise_template.image.url if slot.exercise_template.image else None,   # ← NUEVO
+        'initial_weight_kg': float(slot.initial_weight_kg),
+        'target_reps_min': slot.target_reps_min,
+        'target_reps_max': slot.target_reps_max,
+        'target_sets': slot.target_sets,
+        'rest_seconds': slot.rest_seconds,
+        'notes': slot.notes,
+        'increment_kg': slot.exercise_template.get_increment_kg(),
+    }
+
+
+def _serialize_session(session):
+    return {
+        'id': session.id,
+        'order': session.order,
+        'label': session.label,
+        'focus': session.focus,
+        'slots': [_serialize_slot(s) for s in session.slots.all()],
+    }
+
+
+def _serialize_routine(routine):
+    return {
+        'id': routine.id,
+        'name': routine.name,
+        'description': routine.description,
+        'duration_weeks': routine.duration_weeks,
+        'is_active': routine.is_active,
+        'total_sessions': routine.total_sessions,
+        'sessions': [_serialize_session(s) for s in routine.sessions.all()],
+    }
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def exercise_templates(request):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    if request.method == 'GET':
+        qs = ExerciseTemplate.objects.filter(trainer=request.user)
+        return Response([_serialize_exercise_template(e) for e in qs])
+
+    # POST - acepta multipart/form-data con imagen
+    data = request.data
+    try:
+        et = ExerciseTemplate.objects.create(
+            trainer=request.user,
+            name=data.get('name', '').strip(),
+            muscle_group=data.get('muscle_group', 'full_body'),
+            equipment=data.get('equipment', ''),
+            description=data.get('description', ''),
+            video_url=data.get('video_url', ''),
+            image=data.get('image') or None,                          # ← NUEVO
+            increment_type=data.get('increment_type', 'kg_2_5'),
+            plate_weight_kg=data.get('plate_weight_kg') or None,
+            custom_increment_kg=data.get('custom_increment_kg') or None,
+        )
+        return Response(_serialize_exercise_template(et), status=201)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def exercise_template_detail(request, pk):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        et = ExerciseTemplate.objects.get(id=pk, trainer=request.user)
+    except ExerciseTemplate.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+
+    if request.method == 'GET':
+        return Response(_serialize_exercise_template(et))
+
+    if request.method == 'DELETE':
+        et.delete()
+        return Response({'success': True})
+
+    data = request.data
+    for field in ['name', 'muscle_group', 'equipment', 'description', 'video_url',
+                  'increment_type', 'plate_weight_kg', 'custom_increment_kg']:
+        if field in data:
+            setattr(et, field, data[field] if data[field] != '' else None
+                    if field in ['plate_weight_kg', 'custom_increment_kg'] else data[field])
+    if data.get('image'):
+        et.image = data['image']
+    et.save()
+    return Response(_serialize_exercise_template(et))
+
+
+# ---------- ROUTINE TEMPLATES (Entrenador) ----------
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def routine_templates(request):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    if request.method == 'GET':
+        qs = RoutineTemplate.objects.filter(trainer=request.user)
+        return Response([_serialize_routine(r) for r in qs])
+
+    data = request.data
+    routine = RoutineTemplate.objects.create(
+        trainer=request.user,
+        name=data.get('name', 'Rutina sin nombre'),
+        description=data.get('description', ''),
+        duration_weeks=data.get('duration_weeks', 4),
+    )
+    return Response(_serialize_routine(routine), status=201)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def routine_template_detail(request, pk):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        routine = RoutineTemplate.objects.get(id=pk, trainer=request.user)
+    except RoutineTemplate.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=404)
+
+    if request.method == 'GET':
+        return Response(_serialize_routine(routine))
+
+    if request.method == 'DELETE':
+        routine.delete()
+        return Response({'success': True})
+
+    # PUT
+    data = request.data
+    if 'name' in data:
+        routine.name = data['name']
+    if 'description' in data:
+        routine.description = data['description']
+    if 'duration_weeks' in data:
+        routine.duration_weeks = data['duration_weeks']
+    if 'is_active' in data:
+        routine.is_active = data['is_active']
+    routine.save()
+    return Response(_serialize_routine(routine))
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def slot_detail(request, pk):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        slot = SessionExerciseSlot.objects.get(id=pk, session__routine__trainer=request.user)
+    except SessionExerciseSlot.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+
+    if request.method == 'GET':
+        return Response(_serialize_slot(slot))
+
+    if request.method == 'DELETE':
+        slot.delete()
+        return Response({'success': True})
+
+    # PUT
+    data = request.data
+    updatable = [
+        'role', 'order', 'initial_weight_kg',
+        'target_reps_min', 'target_reps_max',
+        'target_sets', 'rest_seconds', 'notes',
+    ]
+    for field in updatable:
+        if field in data:
+            setattr(slot, field, data[field])
+
+    # Cambiar el ejercicio (template)
+    if 'exercise_template_id' in data:
+        try:
+            et = ExerciseTemplate.objects.get(id=data['exercise_template_id'], trainer=request.user)
+            slot.exercise_template = et
+        except ExerciseTemplate.DoesNotExist:
+            return Response({'error': 'Ejercicio no encontrado'}, status=404)
+
+    slot.save()
+    return Response(_serialize_slot(slot))
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def session_template_detail(request, pk):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        session = SessionTemplate.objects.get(id=pk, routine__trainer=request.user)
+    except SessionTemplate.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=404)
+
+    if request.method == 'GET':
+        return Response(_serialize_session(session))
+
+    if request.method == 'DELETE':
+        session.delete()
+        return Response({'success': True})
+
+    # PUT
+    data = request.data
+    if 'label' in data:
+        session.label = data['label']
+    if 'focus' in data:
+        session.focus = data['focus']
+    if 'order' in data:
+        session.order = data['order']
+    session.save()
+    return Response(_serialize_session(session))
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def routine_add_session(request, pk):
+    """Agrega una sesión (A/B/C…) a la rutina."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        routine = RoutineTemplate.objects.get(id=pk, trainer=request.user)
+    except RoutineTemplate.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=404)
+
+    data = request.data
+    session = SessionTemplate.objects.create(
+        routine=routine,
+        order=data.get('order', routine.sessions.count() + 1),
+        label=data.get('label', chr(65 + routine.sessions.count())),
+        focus=data.get('focus', ''),
+    )
+    return Response(_serialize_session(session), status=201)
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def session_add_slot(request, pk):
+    """Agrega (o actualiza) un ejercicio en una sesión."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        session = SessionTemplate.objects.get(id=pk, routine__trainer=request.user)
+    except SessionTemplate.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=404)
+
+    data = request.data
+    slot_id = data.get('id')
+
+    # Si viene un id → actualizar existente
+    if slot_id:
+        try:
+            slot = SessionExerciseSlot.objects.get(id=slot_id, session=session)
+        except SessionExerciseSlot.DoesNotExist:
+            return Response({'error': 'Slot no encontrado'}, status=404)
+
+        # Cambiar exercise_template si viene
+        if 'exercise_template_id' in data:
+            try:
+                et = ExerciseTemplate.objects.get(id=data['exercise_template_id'], trainer=request.user)
+                slot.exercise_template = et
+            except ExerciseTemplate.DoesNotExist:
+                return Response({'error': 'Ejercicio no encontrado'}, status=404)
+
+        for field in ['role', 'order', 'initial_weight_kg', 'target_reps_min',
+                      'target_reps_max', 'target_sets', 'rest_seconds', 'notes']:
+            if field in data:
+                setattr(slot, field, data[field])
+        slot.save()
+        return Response(_serialize_slot(slot), status=200)
+
+    # Crear nuevo (validaciones existentes)
+    if session.slots.count() >= 5:
+        return Response({'error': 'Máximo 5 ejercicios por sesión'}, status=400)
+
+    role = data.get('role', 'main')
+    mains = session.slots.filter(role='main').count()
+    secondaries = session.slots.filter(role='secondary').count()
+    if role == 'main' and mains >= 3:
+        return Response({'error': 'Máximo 3 ejercicios principales'}, status=400)
+    if role == 'secondary' and secondaries >= 2:
+        return Response({'error': 'Máximo 2 ejercicios secundarios'}, status=400)
+
+    try:
+        et = ExerciseTemplate.objects.get(id=data.get('exercise_template_id'), trainer=request.user)
+    except ExerciseTemplate.DoesNotExist:
+        return Response({'error': 'Ejercicio no encontrado'}, status=404)
+
+    slot = SessionExerciseSlot.objects.create(
+        session=session,
+        exercise_template=et,
+        role=role,
+        order=data.get('order', session.slots.count() + 1),
+        initial_weight_kg=data.get('initial_weight_kg', 0),
+        target_reps_min=data.get('target_reps_min', 12),
+        target_reps_max=data.get('target_reps_max', 15),
+        target_sets=data.get('target_sets', 3),
+        rest_seconds=data.get('rest_seconds', 60),
+        notes=data.get('notes', ''),
+    )
+    return Response(_serialize_slot(slot), status=201)
+
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def slot_delete(request, pk):
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        slot = SessionExerciseSlot.objects.get(id=pk, session__routine__trainer=request.user)
+    except SessionExerciseSlot.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+    slot.delete()
+    return Response({'success': True})
+
+
+# ---------- ASIGNACIÓN A CLIENTE ----------
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def assign_routine(request, pk):
+    """Asigna una rutina a un cliente."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    try:
+        routine = RoutineTemplate.objects.get(id=pk, trainer=request.user)
+    except RoutineTemplate.DoesNotExist:
+        return Response({'error': 'Rutina no encontrada'}, status=404)
+
+    client_id = request.data.get('client_id')
+    if not client_id:
+        return Response({'error': 'client_id requerido'}, status=400)
+
+    # Desactivar asignaciones previas
+    ClientAssignment.objects.filter(client_id=client_id, is_active=True).update(is_active=False)
+
+    assignment = ClientAssignment.objects.create(
+        client_id=client_id,
+        trainer=request.user,
+        routine=routine,
+        current_session_index=0,
+    )
+    return Response({
+        'id': assignment.id,
+        'client_id': assignment.client_id,
+        'routine_id': assignment.routine_id,
+        'current_session_index': assignment.current_session_index,
+    }, status=201)
+
+
+# ---------- CLIENTE: Mi rutina y próxima sesión ----------
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_assignment(request):
+    assignment = ClientAssignment.objects.filter(
+        client=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response({'detail': 'Sin rutina asignada'}, status=404)
+
+    next_session = assignment.get_next_session()
+    return Response({
+        'id': assignment.id,
+        'routine_id': assignment.routine_id,
+        'routine_name': assignment.routine.name,
+        'current_session_index': assignment.current_session_index,
+        'total_sessions': assignment.routine.total_sessions,
+        'next_session_label': next_session.label if next_session else None,
+        'start_date': assignment.start_date,
+    })
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_next_session(request):
+    assignment = ClientAssignment.objects.filter(
+        client=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response({'detail': 'Sin rutina asignada'}, status=404)
+
+    session = assignment.get_next_session()
+    if not session:
+        return Response({'detail': 'La rutina no tiene sesiones'}, status=404)
+
+    # Reutiliza un log abierto o crea uno nuevo
+    log, created = SessionLog.objects.get_or_create(
+        assignment=assignment,
+        session_template=session,
+        is_completed=False,
+    )
+
+    slots_payload = []
+    for slot in session.slots.select_related('exercise_template').all():
+        prog, _ = ExerciseProgression.objects.get_or_create(
+            client=request.user,
+            slot=slot,
+            defaults={'current_weight_kg': slot.initial_weight_kg},
+        )
+        # Últimas 5 series registradas de este slot (histórico)
+        last_sets = SetLog.objects.filter(
+            session_log__assignment=assignment,
+            slot=slot,
+        ).order_by('-created_at')[:5]
+
+        # Series ya guardadas en ESTE log abierto (si el cliente dejó a medias)
+        current_sets = list(SetLog.objects.filter(
+            session_log=log, slot=slot
+        ).order_by('set_number').values('set_number', 'reps_done', 'weight_used_kg'))
+
+        slots_payload.append({
+            **_serialize_slot(slot),
+            'current_weight_kg': float(prog.current_weight_kg),
+            'ready_to_increase': prog.ready_to_increase,
+            'last_session_summary': [
+                {'reps': s.reps_done, 'weight': float(s.weight_used_kg)}
+                for s in reversed(list(last_sets))
+            ],
+            'current_sets': [
+                {'set_number': s['set_number'], 'reps': s['reps_done'],
+                 'weight': float(s['weight_used_kg'])}
+                for s in current_sets
+            ],
+        })
+
+    return Response({
+        'session_log_id': log.id,
+        'session_label': session.label,
+        'session_focus': session.focus,
+        'session_index': assignment.current_session_index,
+        'total_sessions': assignment.routine.total_sessions,
+        'routine_name': assignment.routine.name,
+        'exercises': slots_payload,
+    })
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def add_set(request, session_log_id):
+    """Registra una serie individual."""
+    try:
+        log = SessionLog.objects.get(id=session_log_id, assignment__client=request.user)
+    except SessionLog.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=404)
+
+    if log.is_completed:
+        return Response({'error': 'La sesión ya fue cerrada'}, status=400)
+
+    slot_id = request.data.get('slot_id')
+    reps_done = request.data.get('reps_done')
+    weight_used_kg = request.data.get('weight_used_kg')
+
+    if slot_id in (None, '') or reps_done is None or weight_used_kg is None:
+        return Response({'error': 'slot_id, reps_done y weight_used_kg son obligatorios'}, status=400)
+
+    try:
+        slot = SessionExerciseSlot.objects.get(id=slot_id, session=log.session_template)
+    except SessionExerciseSlot.DoesNotExist:
+        return Response({'error': 'Ejercicio no pertenece a esta sesión'}, status=404)
+
+    set_number = SetLog.objects.filter(session_log=log, slot=slot).count() + 1
+
+    set_log = SetLog.objects.create(
+        session_log=log,
+        slot=slot,
+        set_number=set_number,
+        reps_done=int(reps_done),
+        weight_used_kg=Decimal(str(weight_used_kg)),
+    )
+    return Response({
+        'id': set_log.id,
+        'set_number': set_log.set_number,
+        'reps_done': set_log.reps_done,
+        'weight_used_kg': float(set_log.weight_used_kg),
+    }, status=201)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def finish_session(request, session_log_id):
+    """Cierra la sesión, evalúa progresión y avanza el bucle."""
+    try:
+        log = SessionLog.objects.get(id=session_log_id, assignment__client=request.user)
+    except SessionLog.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=404)
+
+    if log.is_completed:
+        return Response({'error': 'La sesión ya fue cerrada'}, status=400)
+
+    rpe = request.data.get('rpe')
+    notes = request.data.get('notes', '')
+
+    alerts = []
+    for slot in log.session_template.slots.select_related('exercise_template').all():
+        sets = list(SetLog.objects.filter(session_log=log, slot=slot).order_by('set_number'))
+        if not sets:
+            continue
+
+        prog, _ = ExerciseProgression.objects.get_or_create(
+            client=request.user,
+            slot=slot,
+            defaults={'current_weight_kg': slot.initial_weight_kg},
+        )
+
+        sets_data = [{'reps_done': s.reps_done, 'weight_used_kg': s.weight_used_kg} for s in sets]
+        result = evaluate_progression(
+            sets_data=sets_data,
+            target_reps_min=slot.target_reps_min,
+            target_reps_max=slot.target_reps_max,
+            current_weight_kg=float(prog.current_weight_kg),
+            increment_kg=slot.exercise_template.get_increment_kg(),
+        )
+
+        prog.ready_to_increase = result['ready_to_increase']
+        prog.save(update_fields=['ready_to_increase', 'last_evaluated_at'])
+
+        if result['ready_to_increase']:
+            alerts.append({
+                'exercise': slot.exercise_template.name,
+                'message': result['reason'],
+                'suggested_weight_kg': float(result['suggested_weight_kg']),
+            })
+
+    log.is_completed = True
+    log.finished_at = timezone.now()
+    log.rpe = rpe
+    log.notes = notes
+    log.save()
+
+    log.assignment.advance_session()
+
+    return Response({
+        'success': True,
+        'alerts': alerts,
+        'next_session_index': log.assignment.current_session_index,
+    })
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def apply_progression(request, slot_id):
+    """
+    El cliente acepta subir carga en un ejercicio.
+    Se aplica el peso sugerido y se resetea el flag.
+    """
+    try:
+        slot = SessionExerciseSlot.objects.get(id=slot_id)
+    except SessionExerciseSlot.DoesNotExist:
+        return Response({'error': 'Slot no encontrado'}, status=404)
+
+    try:
+        prog = ExerciseProgression.objects.get(client=request.user, slot=slot)
+    except ExerciseProgression.DoesNotExist:
+        return Response({'error': 'Progresión no encontrada'}, status=404)
+
+    if not prog.ready_to_increase:
+        return Response({'error': 'Este ejercicio aún no está listo para subir'}, status=400)
+
+    new_weight = Decimal(str(prog.current_weight_kg)) + Decimal(str(slot.exercise_template.get_increment_kg()))
+    prog.current_weight_kg = new_weight
+    prog.ready_to_increase = False
+    prog.times_increased += 1
+    prog.save()
+
+    return Response({
+        'success': True,
+        'new_weight_kg': float(new_weight),
+        'times_increased': prog.times_increased,
+    })
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_progress(request):
+    """Progreso global del cliente."""
+    progressions = ExerciseProgression.objects.filter(
+        client=request.user
+    ).select_related('slot__exercise_template')
+
+    total_sessions_done = SessionLog.objects.filter(
+        assignment__client=request.user, is_completed=True
+    ).count()
+
+    return Response({
+        'total_sessions_completed': total_sessions_done,
+        'exercises': [
+            {
+                'slot_id': p.slot_id,
+                'exercise_name': p.slot.exercise_template.name,
+                'muscle_group': p.slot.exercise_template.get_muscle_group_display(),
+                'current_weight_kg': float(p.current_weight_kg),
+                'ready_to_increase': p.ready_to_increase,
+                'times_increased': p.times_increased,
+            }
+            for p in progressions
+        ],
+    })
+
+
+# ---------- ENTRENADOR: progreso de un cliente ----------
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def client_progress_detail(request, client_id):
+    """El entrenador ve el detalle de progreso de un cliente."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response({'error': 'Sin asignación activa para este cliente'}, status=404)
+
+    progressions = ExerciseProgression.objects.filter(
+        client_id=client_id
+    ).select_related('slot__exercise_template')
+
+    logs = SessionLog.objects.filter(
+        assignment=assignment, is_completed=True
+    ).order_by('-finished_at')[:10]
+
+    return Response({
+        'assignment': {
+            'id': assignment.id,
+            'routine_name': assignment.routine.name,
+            'current_session_index': assignment.current_session_index,
+            'total_sessions': assignment.routine.total_sessions,
+        },
+        'progressions': [
+            {
+                'exercise_name': p.slot.exercise_template.name,
+                'muscle_group': p.slot.exercise_template.get_muscle_group_display(),
+                'current_weight_kg': float(p.current_weight_kg),
+                'ready_to_increase': p.ready_to_increase,
+                'times_increased': p.times_increased,
+            }
+            for p in progressions
+        ],
+        'recent_sessions': [
+            {
+                'id': log.id,
+                'label': log.session_template.label,
+                'finished_at': log.finished_at,
+                'rpe': log.rpe,
+            }
+            for log in logs
+        ],
+    })

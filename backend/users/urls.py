@@ -21,6 +21,7 @@ from .views import (
     my_trainer,
     all_users_for_admin,
     admin_assign_trainer,
+    all_users_for_trainer,
 )
 
 urlpatterns = [
@@ -55,4 +56,5 @@ urlpatterns = [
     path('trainer/clients/', get_trainer_clients, name='trainer-clients'),
     path('trainer/clients/<int:client_id>/', get_client_details, name='client-details'),
     path('trainer/clients/<int:client_id>/update-plan/', update_client_plan, name='update-client-plan'),
+    path('trainer/all-users/', all_users_for_trainer, name='trainer-all-users'),
 ]

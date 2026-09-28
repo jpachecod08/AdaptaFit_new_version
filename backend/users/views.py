@@ -998,3 +998,43 @@ def admin_assign_trainer(request):
     except Exception as e:
         logger.error(f"Error en admin_assign_trainer: {e}")
         return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def all_users_for_trainer(request):
+    """
+    Devuelve TODOS los usuarios con role='usuario' registrados.
+    Solo para entrenadores.
+    """
+    user = request.user
+
+    if not (user.is_staff or user.role == 'entrenador'):
+        return Response({'error': 'No autorizado'}, status=403)
+
+    users = CustomUser.objects.filter(role='usuario', is_active=True).order_by('-date_joined')
+
+    data = []
+    for u in users:
+        # ¿Ya tiene entrenador asignado?
+        try:
+            profile = u.profile
+            has_trainer = profile.trainer is not None
+            trainer_email = profile.trainer.email if profile.trainer else None
+            is_mine = profile.trainer_id == user.id
+        except UserProfile.DoesNotExist:
+            has_trainer = False
+            trainer_email = None
+            is_mine = False
+
+        data.append({
+            'id': u.id,
+            'email': u.email,
+            'name': u.nombre or u.email.split('@')[0],
+            'date_joined': u.date_joined,
+            'is_active': u.is_active,
+            'has_trainer': has_trainer,
+            'trainer_email': trainer_email,
+            'is_mine': is_mine,  # ¿es cliente de este entrenador?
+        })
+
+    return Response(data)

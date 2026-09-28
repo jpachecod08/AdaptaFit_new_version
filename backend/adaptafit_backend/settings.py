@@ -115,6 +115,9 @@ else:
         }
     }
 
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Si prefieres usar SQLite durante desarrollo, usa este en lugar del de arriba:
 # DATABASES = {
 #     'default': {

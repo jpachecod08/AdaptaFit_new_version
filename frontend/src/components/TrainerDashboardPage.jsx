@@ -1,102 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Paper,
-  Grid,
-  Avatar,
-  Chip,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-  LinearProgress,
-  CircularProgress,
-  TextField,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
-  Card,
-  CardContent,
-  Divider,
-  Tabs,
-  Tab,
-  AppBar,
-  Toolbar,
-  Badge,
-  Select,
-  FormControl,
-  InputLabel,
-  Snackbar,
-  Alert as MuiAlert,
-  useMediaQuery,
-  useTheme
-} from '@mui/material';
-import {
-  Person,
-  FitnessCenter,
-  TrendingUp,
-  Warning,
-  Videocam,
-  Edit,
-  Visibility,
-  AccessTime,
-  Logout,
-  MoreVert,
-  Phone,
-  Schedule,
-  CheckCircle,
-  Cancel,
-  Add,
-  Delete,
-  Save,
-  Close,
-  Settings,
-  Menu as MenuIcon,
-  AccountCircle,
-  CalendarToday,
-  Email,
-  SportsGymnastics,
-  EditCalendar
-} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  Users, Dumbbell, TrendingUp, LogOut, Edit, Eye, Video,
+  UserPlus, PlusCircle, Search, AlertTriangle, CheckCircle,
+  Mail, Calendar, Settings, X, Flame, Award, Clock,
+} from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config';
 
 const TrainerDashboardPage = ({ onLogout }) => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [clients, setClients] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [activeTab, setActiveTab] = useState(0);
-  const [editedPlan, setEditedPlan] = useState(null);
+  const [activeTable, setActiveTable] = useState('all'); // 'all' | 'clients'
+
+  // Búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Modales
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoLink, setVideoLink] = useState('');
-  const [editingExercise, setEditingExercise] = useState(null);
 
-  // Menú de usuario
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  // Progreso del cliente
+  const [clientProgress, setClientProgress] = useState(null);
+  const [progressLoading, setProgressLoading] = useState(false);
 
-  // Función para obtener el token
   const getAuthHeader = () => {
     const token = localStorage.getItem('authToken');
     return token ? `Token ${token}` : null;
@@ -113,54 +48,39 @@ const TrainerDashboardPage = ({ onLogout }) => {
         setLoading(false);
         return;
       }
-
       if (userRole !== 'entrenador') {
-        setError('Solo los entrenadores pueden acceder a esta página.');
+        setError('Solo los entrenadores pueden acceder.');
         setTimeout(() => navigate('/dashboard'), 2000);
         setLoading(false);
         return;
       }
 
-      await fetchClients();
+      await Promise.all([fetchClients(), fetchAllUsers()]);
     };
-
     verifyAndFetch();
   }, [navigate]);
 
   const fetchClients = async () => {
     try {
-      setLoading(true);
       const authHeader = getAuthHeader();
-      
-      if (!authHeader) {
-        setError('Token no encontrado. Por favor, inicia sesión nuevamente.');
-        setLoading(false);
-        return;
-      }
-
       const response = await axios.get(`${API_URL}/api/users/trainer/clients/`, {
-        headers: { 
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        }
+        headers: { Authorization: authHeader },
       });
-      
       setClients(response.data);
-      setError('');
     } catch (err) {
-      console.error('Error fetching clients:', err);
-      if (err.response?.status === 401) {
-        setError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userRole');
-        if (onLogout) onLogout();
-        setTimeout(() => navigate('/login'), 2000);
-      } else if (err.response?.status === 403) {
-        setError('No tienes permisos de entrenador.');
-        setTimeout(() => navigate('/dashboard'), 3000);
-      } else {
-        setError('Error al cargar clientes: ' + (err.message || 'Error desconocido'));
-      }
+      console.error('Error clients:', err);
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      const authHeader = getAuthHeader();
+      const response = await axios.get(`${API_URL}/api/users/trainer/all-users/`, {
+        headers: { Authorization: authHeader },
+      });
+      setAllUsers(response.data);
+    } catch (err) {
+      console.error('Error all users:', err);
     } finally {
       setLoading(false);
     }
@@ -169,855 +89,663 @@ const TrainerDashboardPage = ({ onLogout }) => {
   const viewClientDetails = async (clientId) => {
     try {
       const authHeader = getAuthHeader();
-      const response = await axios.get(`${API_URL}/api/users/trainer/clients/${clientId}/`, {
-        headers: { 
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        }
-      });
-      setSelectedClient(response.data);
-      setEditedPlan(response.data.current_plan);
+      const infoResp = await axios.get(
+        `${API_URL}/api/users/trainer/clients/${clientId}/`,
+        { headers: { Authorization: authHeader } }
+      );
+      setSelectedClient(infoResp.data);
       setViewDialogOpen(true);
-    } catch (err) {
-      setError('Error al cargar detalles del cliente: ' + err.message);
-    }
-  };
 
-  const regeneratePlan = async (clientId) => {
-    try {
-      const authHeader = getAuthHeader();
-      const response = await axios.post(
-        `${API_URL}/api/users/trainer/clients/${clientId}/update-plan/`,
-        { action: 'regenerate' },
-        { 
-          headers: { 
-            'Authorization': authHeader,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      setSuccess('Plan regenerado exitosamente');
-      fetchClients();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Error al regenerar plan: ' + err.message);
-    }
-  };
-
-  const updateExercise = async (clientId, exerciseId, updatedData) => {
-    try {
-      const authHeader = getAuthHeader();
-      const response = await axios.post(
-        `${API_URL}/api/users/trainer/clients/${clientId}/update-plan/`,
-        {
-          action: 'update_exercise',
-          exercise_id: exerciseId,
-          ...updatedData
-        },
-        { 
-          headers: { 
-            'Authorization': authHeader,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      setSuccess('Ejercicio actualizado exitosamente');
-      // Actualizar el plan editado localmente
-      if (editedPlan) {
-        const updatedPlan = { ...editedPlan };
-        updatedPlan.days.forEach(day => {
-          day.exercises.forEach(exercise => {
-            if (exercise.id === exerciseId) {
-              Object.assign(exercise, updatedData);
-            }
-          });
-        });
-        setEditedPlan(updatedPlan);
+      setProgressLoading(true);
+      try {
+        const progResp = await axios.get(
+          `${API_URL}/api/workouts/clients/${clientId}/progress/`,
+          { headers: { Authorization: authHeader } }
+        );
+        setClientProgress(progResp.data);
+      } catch {
+        setClientProgress(null);
+      } finally {
+        setProgressLoading(false);
       }
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Error al actualizar ejercicio: ' + err.message);
+      setError('Error al cargar detalles: ' + err.message);
     }
   };
 
-  const startVideoCall = async (clientId) => {
-    try {
-      // Generar un enlace de video único (en producción usarías un servicio como Daily.co, Zoom, etc.)
-      const roomId = `adaptafit-${clientId}-${Date.now()}`;
-      const videoUrl = `https://meet.jit.si/${roomId}`;
-      
-      setVideoLink(videoUrl);
-      setVideoDialogOpen(true);
-      
-      // Opcional: Enviar notificación al cliente (necesitarías implementar WebSockets o notificaciones push)
-      const authHeader = getAuthHeader();
-      await axios.post(
-        `${API_URL}/api/users/trainer/notify-videocall/`,
-        {
-          client_id: clientId,
-          video_link: videoUrl,
-          timestamp: new Date().toISOString()
-        },
-        { 
-          headers: { 
-            'Authorization': authHeader,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-    } catch (err) {
-      console.error('Error al iniciar videollamada:', err);
-      // Fallback: usar enlace simple
-      setVideoLink(`https://meet.jit.si/adaptafit-${clientId}`);
-      setVideoDialogOpen(true);
-    }
+  const startVideoCall = (clientId) => {
+    const roomId = `adaptafit-${clientId}-${Date.now()}`;
+    setVideoLink(`https://meet.jit.si/${roomId}`);
+    setVideoDialogOpen(true);
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Sin actividad';
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+      const d = new Date(dateString);
+      return d.toLocaleDateString('es-ES', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
       });
-    } catch (e) {
+    } catch {
       return 'Fecha inválida';
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'success';
-      case 'inactive': return 'error';
-      default: return 'default';
+  const goToRoutineBuilder = (clientId = null) => {
+    if (clientId) {
+      navigate(`/routine-builder?client_id=${clientId}`);
+    } else {
+      navigate('/routine-builder');
     }
   };
 
-  const handleEditExercise = (exercise) => {
-    setEditingExercise(exercise);
-  };
-
-  const handleSaveExercise = () => {
-    if (editingExercise && selectedClient) {
-      updateExercise(selectedClient.client.id, editingExercise.id, editingExercise);
-      setEditingExercise(null);
-    }
-  };
+  // Filtrado
+  const filteredUsers = allUsers.filter(u =>
+    !searchTerm ||
+    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>
-          Cargando dashboard...
-        </Typography>
-      </Box>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-300 text-lg font-medium">Cargando panel...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-      {/* AppBar Superior */}
-      <AppBar position="static" sx={{ bgcolor: '#1a237e', boxShadow: 2 }}>
-        <Toolbar>
-          <SportsGymnastics sx={{ mr: 2 }} />
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            AdaptaFit - Panel de Entrenador
-          </Typography>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 relative overflow-hidden">
 
-          {/* Menú de usuario */}
-          <Tooltip title="Menú de usuario">
-            <IconButton
-              color="inherit"
-              onClick={(e) => setUserMenuAnchor(e.currentTarget)}
-              sx={{ ml: 1 }}
+      {/* Blobs decorativos */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-lime-400/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+
+      {/* ============ NAVBAR ============ */}
+      <nav className="relative z-20 bg-slate-900/50 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-emerald-400 to-lime-400 p-2 rounded-xl shadow-lg shadow-emerald-500/30">
+              <Dumbbell size={22} className="text-slate-900" />
+            </div>
+            <div>
+              <h1 className="text-white font-extrabold text-lg leading-tight">AdaptaFit</h1>
+              <p className="text-emerald-300 text-xs font-medium uppercase tracking-widest">Panel Entrenador</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/editar-perfil')}
+              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
+              title="Configuración"
             >
-              <AccountCircle />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={userMenuAnchor}
-            open={Boolean(userMenuAnchor)}
-            onClose={() => setUserMenuAnchor(null)}
-            PaperProps={{
-              sx: {
-                mt: 1.5,
-                minWidth: 180,
-                boxShadow: '0px 4px 20px rgba(0,0,0,0.1)'
-              }
-            }}
-          >
-            <MenuItem disabled>
-              <ListItemIcon>
-                <AccountCircle fontSize="small" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Mi Cuenta" 
-                secondary={localStorage.getItem('userEmail') || 'Entrenador'}
-              />
-            </MenuItem>
-            <Divider />
-            <MenuItem onClick={() => navigate('/editar-perfil')}>
-              <ListItemIcon>
-                <Settings fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Configuración" />
-            </MenuItem>
-            <MenuItem onClick={() => {
-              onLogout();
-              navigate('/login');
-            }} sx={{ color: 'error.main' }}>
-              <ListItemIcon>
-                <Logout fontSize="small" color="error" />
-              </ListItemIcon>
-              <ListItemText primary="Cerrar Sesión" />
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
+              <Settings size={18} />
+            </button>
+            <button
+              onClick={() => { onLogout(); navigate('/login'); }}
+              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-red-400"
+              title="Cerrar sesión"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
+      </nav>
 
-      {/* Contenido Principal */}
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        {/* Mensajes de estado */}
+      {/* ============ MAIN ============ */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
+
+        {/* Mensajes */}
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-            {error}
-          </Alert>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-500/10 border-l-4 border-red-500 text-red-300 rounded-xl flex items-start gap-3">
+            <AlertTriangle size={20} className="flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-medium">{error}</span>
+          </motion.div>
         )}
-
         {success && (
-          <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
-            {success}
-          </Alert>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-emerald-500/10 border-l-4 border-emerald-500 text-emerald-300 rounded-xl flex items-start gap-3">
+            <CheckCircle size={20} className="flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-medium">{success}</span>
+          </motion.div>
         )}
 
-        {/* Resumen de Estadísticas */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#1a237e', color: 'white', borderRadius: 2, boxShadow: 3 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Person sx={{ mr: 2, fontSize: 40, opacity: 0.8 }} />
-                  <Typography variant="h4" fontWeight="bold">
-                    {clients.length}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Total Clientes
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* ============ STATS CARDS ============ */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            icon={<Users size={22} />}
+            color="emerald"
+            value={allUsers.length}
+            label="Usuarios registrados"
+          />
+          <StatCard
+            icon={<Dumbbell size={22} />}
+            color="lime"
+            value={clients.length}
+            label="Clientes activos"
+          />
+          <StatCard
+            icon={<Flame size={22} />}
+            color="orange"
+            value={clients.filter(c => c.completed_today > 0).length}
+            label="Activos hoy"
+          />
+          <StatCard
+            icon={<AlertTriangle size={22} />}
+            color="amber"
+            value={clients.filter(c => c.needs_attention).length}
+            label="Necesitan atención"
+          />
+        </div>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#2e7d32', color: 'white', borderRadius: 2, boxShadow: 3 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <FitnessCenter sx={{ mr: 2, fontSize: 40, opacity: 0.8 }} />
-                  <Typography variant="h4" fontWeight="bold">
-                    {clients.filter(c => c.completed_today > 0).length}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Activos Hoy
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* ============ CONTENEDOR PRINCIPAL ============ */}
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden">
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#ed6c02', color: 'white', borderRadius: 2, boxShadow: 3 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Warning sx={{ mr: 2, fontSize: 40, opacity: 0.8 }} />
-                  <Typography variant="h4" fontWeight="bold">
-                    {clients.filter(c => c.needs_attention).length}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Necesitan Atención
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          {/* Header del panel */}
+          <div className="p-6 border-b border-white/10">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <div>
+                <h2 className="text-white text-2xl font-extrabold mb-1">
+                  Gestión de Clientes
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Asigna rutinas y haz seguimiento a todos los usuarios del gimnasio
+                </p>
+              </div>
+              <button
+                onClick={() => goToRoutineBuilder()}
+                className="group bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-600 hover:to-lime-600 text-slate-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <PlusCircle size={20} />
+                Crear Nueva Rutina
+              </button>
+            </div>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#9c27b0', color: 'white', borderRadius: 2, boxShadow: 3 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <TrendingUp sx={{ mr: 2, fontSize: 40, opacity: 0.8 }} />
-                  <Typography variant="h4" fontWeight="bold">
-                    {clients.length > 0 
-                      ? Math.round(clients.reduce((sum, c) => sum + (c.current_streak || 0), 0) / clients.length)
-                      : 0
-                    }
-                  </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Racha Promedio (días)
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-white/10">
+              <TabButton
+                active={activeTable === 'all'}
+                onClick={() => setActiveTable('all')}
+                label={`Todos los Usuarios`}
+                count={allUsers.length}
+              />
+              <TabButton
+                active={activeTable === 'clients'}
+                onClick={() => setActiveTable('clients')}
+                label={`Mis Clientes`}
+                count={clients.length}
+              />
+            </div>
+          </div>
 
-        {/* Tabla de Clientes */}
-        <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h5" fontWeight="bold" color="primary">
-                Mis Clientes
-              </Typography>
-              <Box>
-                <Button 
-                  variant="outlined" 
-                  startIcon={<AccessTime />}
-                  onClick={fetchClients}
-                  sx={{ mr: 1 }}
-                >
-                  Actualizar
-                </Button>
-                <Button 
-                  variant="contained" 
-                  startIcon={<CalendarToday />}
-                  onClick={() => alert('Funcionalidad de calendario - Próximamente')}
-                >
-                  Ver Calendario
-                </Button>
-              </Box>
-            </Box>
+          {/* Filtros */}
+          <div className="p-6 border-b border-white/5">
+            <div className="relative max-w-md">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Buscar por nombre o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+              />
+            </div>
+          </div>
 
-            {clients.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 6 }}>
-                <Person sx={{ fontSize: 80, color: '#e0e0e0', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  Aún no tienes clientes asignados
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
-                  Los usuarios pueden solicitar tu asesoría desde la sección "Buscar Entrenador" en su perfil
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  color="primary"
-                  onClick={() => navigate('/editar-perfil')}
-                >
-                  Completar Mi Perfil
-                </Button>
-              </Box>
+          {/* Tabla */}
+          <div className="overflow-x-auto">
+            {activeTable === 'all' ? (
+              <UsersTable
+                users={filteredUsers}
+                onAssign={goToRoutineBuilder}
+                onView={viewClientDetails}
+                onVideo={startVideoCall}
+              />
             ) : (
-              <TableContainer sx={{ overflowX: 'auto' }}>
-                <Table sx={{ minWidth: isMobile ? 600 : 900 }}>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                      <TableCell><strong>Cliente</strong></TableCell>
-                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Plan Actual</strong></TableCell>
-                      <TableCell><strong>Progreso Hoy</strong></TableCell>
-                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Racha</strong></TableCell>
-                      <TableCell><strong>Estado</strong></TableCell>
-                      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Última Actividad</strong></TableCell>
-                      <TableCell><strong>Acciones</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {clients.map((client) => (
-                      <TableRow key={client.id} hover>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Avatar sx={{ mr: 2, bgcolor: '#1a237e' }}>
-                              {client.name?.charAt(0)?.toUpperCase() || 'C'}
-                            </Avatar>
-                            <Box>
-                              <Typography fontWeight="medium">
-                                {client.name || client.email?.split('@')[0] || 'Sin nombre'}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                <Email fontSize="small" sx={{ mr: 0.5, fontSize: 14, verticalAlign: 'middle' }} />
-                                {client.email}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                          <Typography variant="body2">
-                            {client.plan_name || 'Sin plan'}
-                          </Typography>
-                          <Chip 
-                            size="small"
-                            label={`${client.frequency || 3}x/semana`}
-                            sx={{ mt: 0.5 }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                            <Box sx={{ width: '100%', mr: 1 }}>
-                              <LinearProgress 
-                                variant="determinate" 
-                                value={((client.completed_today || 0) / (client.total_exercises || 1)) * 100}
-                                sx={{ height: 8, borderRadius: 4 }}
-                              />
-                            </Box>
-                            <Typography variant="body2" color="primary" fontWeight="medium">
-                              {client.completed_today || 0}/{client.total_exercises || 0}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                          <Chip 
-                            icon={<TrendingUp />}
-                            label={`${client.current_streak || 0} días`}
-                            color={client.current_streak > 7 ? 'success' : 'default'}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={client.status === 'active' ? 'Activo' : 'Inactivo'}
-                            color={getStatusColor(client.status)}
-                            size="small"
-                            sx={{ mr: 1 }}
-                          />
-                          {client.needs_attention && (
-                            <Tooltip title="Sin actividad en 3+ días">
-                              <Chip 
-                                icon={<Warning />}
-                                label="Atención"
-                                color="warning"
-                                size="small"
-                              />
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                          <Typography variant="body2">
-                            {formatDate(client.last_activity)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Tooltip title="Ver detalles">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => viewClientDetails(client.id)}
-                                color="primary"
-                              >
-                                <Visibility />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Regenerar plan">
-                              <IconButton 
-                                size="small"
-                                onClick={() => regeneratePlan(client.id)}
-                                color="secondary"
-                              >
-                                <Edit />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Videollamada">
-                              <IconButton 
-                                size="small"
-                                onClick={() => startVideoCall(client.id)}
-                                sx={{ color: '#2e7d32' }}
-                              >
-                                <Videocam />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Más opciones">
-                              <IconButton 
-                                size="small"
-                                onClick={(e) => {
-                                  setAnchorEl(e.currentTarget);
-                                  setSelectedClient(client);
-                                }}
-                              >
-                                <MoreVert />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <ClientsTable
+                clients={clients}
+                onAssign={goToRoutineBuilder}
+                onView={viewClientDetails}
+                onVideo={startVideoCall}
+              />
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
 
-        {/* Menú contextual */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={() => setAnchorEl(null)}
-        >
-          <MenuItem onClick={() => {
-            setAnchorEl(null);
-            if (selectedClient) viewClientDetails(selectedClient.id);
-          }}>
-            <ListItemIcon>
-              <Visibility fontSize="small" />
-            </ListItemIcon>
-            Ver Detalles Completos
-          </MenuItem>
-          <MenuItem onClick={() => {
-            setAnchorEl(null);
-            if (selectedClient) regeneratePlan(selectedClient.id);
-          }}>
-            <ListItemIcon>
-              <Edit fontSize="small" />
-            </ListItemIcon>
-            Editar Rutina Completa
-          </MenuItem>
-          <MenuItem onClick={() => {
-            setAnchorEl(null);
-            if (selectedClient) startVideoCall(selectedClient.id);
-          }}>
-            <ListItemIcon>
-              <Videocam fontSize="small" />
-            </ListItemIcon>
-            Programar Videollamada
-          </MenuItem>
-          <Divider />
-          <MenuItem onClick={() => setAnchorEl(null)} sx={{ color: 'error.main' }}>
-            <ListItemIcon>
-              <Cancel fontSize="small" color="error" />
-            </ListItemIcon>
-            Cancelar
-          </MenuItem>
-        </Menu>
-      </Container>
-
-      {/* Diálogo de Detalles del Cliente */}
-      {selectedClient && (
-        <Dialog 
-          open={viewDialogOpen} 
+      {/* ============ MODAL: DETALLES DEL CLIENTE ============ */}
+      {viewDialogOpen && selectedClient && (
+        <ClientDetailsModal
+          client={selectedClient}
+          progress={clientProgress}
+          progressLoading={progressLoading}
           onClose={() => setViewDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{ sx: { borderRadius: 2 } }}
-        >
-          <DialogTitle sx={{ bgcolor: '#1a237e', color: 'white' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar sx={{ mr: 2, bgcolor: 'white', color: '#1a237e' }}>
-                  {selectedClient.client.nombre?.charAt(0)?.toUpperCase() || 'C'}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6">{selectedClient.client.nombre || selectedClient.client.email}</Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    Cliente desde {formatDate(selectedClient.client.date_joined)}
-                  </Typography>
-                </Box>
-              </Box>
-              <IconButton onClick={() => setViewDialogOpen(false)} sx={{ color: 'white' }}>
-                <Close />
-              </IconButton>
-            </Box>
-          </DialogTitle>
-          
-          <DialogContent dividers>
-            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
-              <Tab label="Información" icon={<Person />} iconPosition="start" />
-              <Tab label="Rutina Actual" icon={<FitnessCenter />} iconPosition="start" />
-              <Tab label="Historial" icon={<TrendingUp />} iconPosition="start" />
-            </Tabs>
-
-            {activeTab === 0 && (
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom sx={{ color: '#1a237e' }}>
-                    Información Personal
-                  </Typography>
-                  <Box sx={{ '& > *': { mb: 1 } }}>
-                    <Typography><strong>Email:</strong> {selectedClient.client.email}</Typography>
-                    {selectedClient.client.profile?.objetivo && (
-                      <Typography><strong>Objetivo:</strong> {selectedClient.client.profile.objetivo}</Typography>
-                    )}
-                    {selectedClient.client.profile?.experiencia && (
-                      <Typography><strong>Experiencia:</strong> {selectedClient.client.profile.experiencia}</Typography>
-                    )}
-                    {selectedClient.client.profile?.frecuencia && (
-                      <Typography><strong>Frecuencia:</strong> {selectedClient.client.profile.frecuencia} días/semana</Typography>
-                    )}
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom sx={{ color: '#1a237e' }}>
-                    Estadísticas
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#e3f2fd', borderRadius: 2 }}>
-                        <Typography variant="h4" color="primary">
-                          {selectedClient.stats.current_streak || 0}
-                        </Typography>
-                        <Typography variant="caption">Días consecutivos</Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#f3e5f5', borderRadius: 2 }}>
-                        <Typography variant="h4" color="secondary">
-                          {selectedClient.stats.total_points || 0}
-                        </Typography>
-                        <Typography variant="caption">Puntos totales</Typography>
-                      </Paper>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-            )}
-
-            {activeTab === 1 && editedPlan && (
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h6" sx={{ color: '#1a237e' }}>
-                    {editedPlan.title}
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    startIcon={<EditCalendar />}
-                    onClick={() => setEditDialogOpen(true)}
-                  >
-                    Editar Rutina
-                  </Button>
-                </Box>
-                
-                <Typography variant="body2" paragraph>
-                  {editedPlan.description}
-                </Typography>
-                
-                {editedPlan.days && editedPlan.days.map((day, index) => (
-                  <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      {day.name || `Día ${day.day_number}`}
-                    </Typography>
-                    {day.exercises && day.exercises.map((exercise, exIndex) => (
-                      <Box key={exIndex} sx={{ display: 'flex', alignItems: 'center', mb: 1, p: 1, bgcolor: 'white', borderRadius: 1 }}>
-                        <SportsGymnastics sx={{ mr: 2, color: '#1a237e' }} />
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography fontWeight="medium">{exercise.name}</Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {exercise.sets} sets × {exercise.reps} reps
-                            {exercise.rest_time && ` • Descanso: ${exercise.rest_time}s`}
-                          </Typography>
-                        </Box>
-                        <Tooltip title="Editar ejercicio">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleEditExercise(exercise)}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    ))}
-                  </Paper>
-                ))}
-              </Box>
-            )}
-
-            {activeTab === 2 && (
-              <Box>
-                <Typography variant="h6" gutterBottom sx={{ color: '#1a237e' }}>
-                  Historial de Entrenamientos
-                </Typography>
-                {selectedClient.recent_workouts && selectedClient.recent_workouts.length > 0 ? (
-                  selectedClient.recent_workouts.map((workout, index) => (
-                    <Paper key={index} sx={{ p: 2, mb: 1, borderRadius: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <CheckCircle color="success" sx={{ mr: 2 }} />
-                        <Box>
-                          <Typography variant="body2">
-                            <strong>{workout.exercise_name}</strong> completado
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatDate(workout.date)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Paper>
-                  ))
-                ) : (
-                  <Alert severity="info">No hay historial de entrenamientos</Alert>
-                )}
-              </Box>
-            )}
-          </DialogContent>
-          
-          <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5' }}>
-            <Button onClick={() => setViewDialogOpen(false)}>
-              Cerrar
-            </Button>
-            <Button 
-              variant="contained" 
-              color="primary"
-              startIcon={<Videocam />}
-              onClick={() => {
-                setViewDialogOpen(false);
-                startVideoCall(selectedClient.client.id);
-              }}
-            >
-              Iniciar Videollamada
-            </Button>
-          </DialogActions>
-        </Dialog>
+          onAssign={() => { setViewDialogOpen(false); goToRoutineBuilder(selectedClient.client?.id); }}
+          onVideo={() => { setViewDialogOpen(false); startVideoCall(selectedClient.client?.id); }}
+        />
       )}
 
-      {/* Diálogo de Edición de Rutina */}
-      {selectedClient && editedPlan && (
-        <Dialog 
-          open={editDialogOpen} 
-          onClose={() => setEditDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Editar Rutina</Typography>
-              <IconButton onClick={() => setEditDialogOpen(false)}>
-                <Close />
-              </IconButton>
-            </Box>
-          </DialogTitle>
-          
-          <DialogContent dividers>
-            <Typography variant="subtitle1" gutterBottom>
-              Editar ejercicios para {selectedClient.client.nombre}
-            </Typography>
-            
-            {editingExercise ? (
-              <Box sx={{ mt: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Nombre del ejercicio"
-                  value={editingExercise.name}
-                  onChange={(e) => setEditingExercise({...editingExercise, name: e.target.value})}
-                  sx={{ mb: 2 }}
-                />
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Sets"
-                      type="number"
-                      value={editingExercise.sets}
-                      onChange={(e) => setEditingExercise({...editingExercise, sets: e.target.value})}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Repeticiones"
-                      type="number"
-                      value={editingExercise.reps}
-                      onChange={(e) => setEditingExercise({...editingExercise, reps: e.target.value})}
-                    />
-                  </Grid>
-                </Grid>
-                <TextField
-                  fullWidth
-                  label="Tiempo de descanso (segundos)"
-                  type="number"
-                  value={editingExercise.rest_time}
-                  onChange={(e) => setEditingExercise({...editingExercise, rest_time: e.target.value})}
-                  sx={{ mt: 2 }}
-                />
-                <TextField
-                  fullWidth
-                  label="Notas"
-                  multiline
-                  rows={2}
-                  value={editingExercise.notes || ''}
-                  onChange={(e) => setEditingExercise({...editingExercise, notes: e.target.value})}
-                  sx={{ mt: 2 }}
-                />
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button onClick={() => setEditingExercise(null)}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    variant="contained" 
-                    onClick={handleSaveExercise}
-                  >
-                    Guardar Cambios
-                  </Button>
-                </Box>
-              </Box>
-            ) : (
-              <Typography>Selecciona un ejercicio para editar</Typography>
-            )}
-          </DialogContent>
-        </Dialog>
+      {/* ============ MODAL: VIDEOLLAMADA ============ */}
+      {videoDialogOpen && (
+        <VideoCallModal
+          link={videoLink}
+          onClose={() => setVideoDialogOpen(false)}
+        />
       )}
-
-      {/* Diálogo de Videollamada */}
-      <Dialog 
-        open={videoDialogOpen} 
-        onClose={() => setVideoDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle sx={{ bgcolor: '#2e7d32', color: 'white' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Videocam sx={{ mr: 2 }} />
-            <Typography variant="h6">Videollamada</Typography>
-          </Box>
-        </DialogTitle>
-        
-        <DialogContent dividers sx={{ p: 3 }}>
-          <Typography variant="body1" paragraph>
-            Enlace de videollamada generado. Comparte este enlace con tu cliente:
-          </Typography>
-          
-          <Paper sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1, mb: 3 }}>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-              {videoLink}
-            </Typography>
-          </Paper>
-          
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Recomendamos usar <strong>Jitsi Meet</strong> (integrado) o <strong>Zoom</strong> para videollamadas profesionales.
-          </Alert>
-          
-          <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-            <Button 
-              variant="contained" 
-              color="success"
-              href={videoLink}
-              target="_blank"
-              startIcon={<Videocam />}
-            >
-              Unirse a la Videollamada
-            </Button>
-            <Button 
-              variant="outlined"
-              onClick={() => navigator.clipboard.writeText(videoLink)}
-            >
-              Copiar Enlace
-            </Button>
-          </Box>
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setVideoDialogOpen(false)}>
-            Cerrar
-          </Button>
-          <Button 
-            variant="contained" 
-            onClick={() => {
-              // Aquí implementarías la integración con Zoom/Google Meet si lo prefieres
-              alert('Integración con Zoom/Google Meet - Próximamente');
-            }}
-          >
-            Usar Zoom/Meet
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    </div>
   );
 };
+
+// ==================== SUB-COMPONENTES ====================
+
+const StatCard = ({ icon, color, value, label }) => {
+  const colorMap = {
+    emerald: 'from-emerald-400 to-emerald-500 shadow-emerald-500/30',
+    lime: 'from-lime-400 to-lime-500 shadow-lime-500/30',
+    orange: 'from-orange-400 to-orange-500 shadow-orange-500/30',
+    amber: 'from-amber-400 to-amber-500 shadow-amber-500/30',
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 hover:border-emerald-500/30 transition-all"
+    >
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${colorMap[color]} flex items-center justify-center text-slate-900 shadow-lg`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-white text-3xl font-extrabold leading-none">{value}</p>
+          <p className="text-slate-400 text-xs uppercase tracking-wider font-medium mt-1">{label}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const TabButton = ({ active, onClick, label, count }) => (
+  <button
+    onClick={onClick}
+    className={`px-5 py-3 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 ${
+      active
+        ? 'text-lime-400 border-lime-400'
+        : 'text-slate-400 border-transparent hover:text-slate-200'
+    }`}
+  >
+    {label}
+    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+      active ? 'bg-lime-400/20 text-lime-400' : 'bg-white/10 text-slate-400'
+    }`}>
+      {count}
+    </span>
+  </button>
+);
+
+const UsersTable = ({ users, onAssign, onView, onVideo }) => {
+  if (users.length === 0) {
+    return (
+      <div className="py-16 text-center">
+        <Users size={60} className="text-slate-600 mx-auto mb-4" />
+        <p className="text-slate-400 font-medium">No hay usuarios registrados</p>
+      </div>
+    );
+  }
+
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-white/10">
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Usuario</th>
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Registro</th>
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Estado</th>
+          <th className="text-right text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {users.map((u) => (
+          <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+            <td className="py-4 px-6">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-lime-400 flex items-center justify-center text-slate-900 font-extrabold">
+                  {u.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <p className="text-white font-semibold">{u.name}</p>
+                  <p className="text-slate-400 text-xs flex items-center gap-1">
+                    <Mail size={12} />
+                    {u.email}
+                  </p>
+                </div>
+              </div>
+            </td>
+            <td className="py-4 px-6">
+              <p className="text-slate-300 text-sm flex items-center gap-2">
+                <Calendar size={14} className="text-slate-500" />
+                {new Date(u.date_joined).toLocaleDateString('es-ES')}
+              </p>
+            </td>
+            <td className="py-4 px-6">
+              {u.is_mine ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                  <CheckCircle size={12} /> Mi cliente
+                </span>
+              ) : u.has_trainer ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
+                  Otro entrenador
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-500/20 text-slate-300 text-xs font-semibold border border-slate-500/30">
+                  Sin asignar
+                </span>
+              )}
+            </td>
+            <td className="py-4 px-6">
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => onAssign(u.id)}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-600 hover:to-lime-600 text-slate-900 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  title="Asignar rutina"
+                >
+                  <PlusCircle size={14} />
+                  Rutina
+                </button>
+                <button
+                  onClick={() => onView(u.id)}
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
+                  title="Ver detalles"
+                >
+                  <Eye size={16} />
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+const ClientsTable = ({ clients, onAssign, onView, onVideo }) => {
+  if (clients.length === 0) {
+    return (
+      <div className="py-16 text-center">
+        <Dumbbell size={60} className="text-slate-600 mx-auto mb-4" />
+        <p className="text-slate-400 font-medium">Aún no tienes clientes activos</p>
+        <p className="text-slate-500 text-sm mt-1">
+          Ve a "Todos los Usuarios" para asignar una rutina a alguien
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-white/10">
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Cliente</th>
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Plan</th>
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Progreso hoy</th>
+          <th className="text-left text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Racha</th>
+          <th className="text-right text-xs uppercase tracking-wider text-slate-400 font-bold py-4 px-6">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {clients.map((c) => (
+          <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+            <td className="py-4 px-6">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-lime-400 flex items-center justify-center text-slate-900 font-extrabold">
+                  {c.name?.charAt(0)?.toUpperCase() || 'C'}
+                </div>
+                <div>
+                  <p className="text-white font-semibold">{c.name}</p>
+                  <p className="text-slate-400 text-xs">{c.email}</p>
+                </div>
+              </div>
+            </td>
+            <td className="py-4 px-6">
+              <p className="text-slate-300 text-sm">{c.plan_name || 'Sin plan'}</p>
+            </td>
+            <td className="py-4 px-6">
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-lime-400"
+                    style={{ width: `${((c.completed_today || 0) / (c.total_exercises || 1)) * 100}%` }}
+                  />
+                </div>
+                <span className="text-lime-400 text-sm font-bold">
+                  {c.completed_today || 0}/{c.total_exercises || 0}
+                </span>
+              </div>
+            </td>
+            <td className="py-4 px-6">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                <Flame size={12} />
+                {c.current_streak || 0} días
+              </span>
+            </td>
+            <td className="py-4 px-6">
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => onView(c.id)}
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
+                  title="Ver detalles"
+                >
+                  <Eye size={16} />
+                </button>
+                <button
+                  onClick={() => onVideo(c.id)}
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
+                  title="Videollamada"
+                >
+                  <Video size={16} />
+                </button>
+                <button
+                  onClick={() => onAssign(c.id)}
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
+                  title="Asignar rutina"
+                >
+                  <PlusCircle size={16} />
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+const ClientDetailsModal = ({ client, progress, progressLoading, onClose, onAssign, onVideo }) => {
+  const [activeTab, setActiveTab] = useState('info');
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-lime-500 p-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-slate-900/30 backdrop-blur-sm flex items-center justify-center text-white font-extrabold text-xl">
+              {client.client?.nombre?.charAt(0)?.toUpperCase() || 'C'}
+            </div>
+            <div>
+              <p className="text-white font-extrabold text-lg">{client.client?.nombre || client.client?.email}</p>
+              <p className="text-white/80 text-sm">{client.client?.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center text-white"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-white/10">
+          {[
+            { id: 'info', label: 'Información' },
+            { id: 'progress', label: 'Progreso de Rutina' },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`px-6 py-4 font-semibold text-sm transition-all border-b-2 ${
+                activeTab === t.id
+                  ? 'text-lime-400 border-lime-400'
+                  : 'text-slate-400 border-transparent hover:text-slate-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {activeTab === 'info' && (
+            <div className="space-y-4">
+              <InfoRow label="Email" value={client.client?.email} />
+              {client.client?.profile?.objetivo && (
+                <InfoRow label="Objetivo" value={client.client.profile.objetivo} />
+              )}
+              {client.client?.profile?.experiencia && (
+                <InfoRow label="Experiencia" value={client.client.profile.experiencia} />
+              )}
+              {client.client?.profile?.frecuencia && (
+                <InfoRow label="Frecuencia" value={`${client.client.profile.frecuencia} días/semana`} />
+              )}
+            </div>
+          )}
+
+          {activeTab === 'progress' && (
+            <div>
+              {progressLoading ? (
+                <div className="py-8 text-center">
+                  <div className="w-10 h-10 border-4 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                </div>
+              ) : !progress ? (
+                <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
+                  Este cliente aún no tiene una rutina manual asignada.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                    <p className="text-emerald-300 font-semibold">
+                      Rutina: {progress.assignment?.routine_name}
+                    </p>
+                    <p className="text-slate-400 text-sm">
+                      Sesión {progress.assignment?.current_session_index + 1} de {progress.assignment?.total_sessions}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {progress.progressions?.length === 0 ? (
+                      <p className="text-slate-400 text-sm">Sin datos de progresión aún.</p>
+                    ) : (
+                      progress.progressions.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                          <div>
+                            <p className="text-white font-semibold">{p.exercise_name}</p>
+                            <p className="text-slate-400 text-xs uppercase">{p.muscle_group}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-sm font-bold">
+                              {p.current_weight_kg} kg
+                            </span>
+                            {p.ready_to_increase && (
+                              <span className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-lime-500 text-slate-900 text-xs font-extrabold">
+                                ¡Sube!
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-white/10 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 font-semibold transition-all"
+          >
+            Cerrar
+          </button>
+          <button
+            onClick={onAssign}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-lime-500 text-slate-900 font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/30 transition-all hover:scale-[1.02]"
+          >
+            <PlusCircle size={18} />
+            Asignar Rutina
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const VideoCallModal = ({ link, onClose }) => (
+  <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden"
+    >
+      <div className="bg-gradient-to-r from-emerald-600 to-lime-500 p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Video size={24} className="text-white" />
+          <h3 className="text-white font-extrabold text-lg">Videollamada</h3>
+        </div>
+        <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center">
+          <X size={20} />
+        </button>
+      </div>
+      <div className="p-6">
+        <p className="text-slate-300 text-sm mb-4">
+          Comparte este enlace con tu cliente para iniciar la videollamada:
+        </p>
+        <div className="p-4 rounded-xl bg-slate-900/50 border border-white/10 mb-4">
+          <p className="text-emerald-300 font-mono text-sm break-all">{link}</p>
+        </div>
+        <div className="flex gap-2">
+          <a href={link} target="_blank" rel="noopener noreferrer"
+            className="flex-1 bg-gradient-to-r from-emerald-500 to-lime-500 text-slate-900 px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30">
+            <Video size={18} /> Unirse
+          </a>
+          <button
+            onClick={() => navigator.clipboard.writeText(link)}
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 font-semibold"
+          >
+            Copiar
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  </div>
+);
+
+const InfoRow = ({ label, value }) => (
+  <div className="flex justify-between py-3 border-b border-white/5">
+    <span className="text-slate-400 text-sm">{label}</span>
+    <span className="text-white font-semibold text-sm">{value}</span>
+  </div>
+);
 
 export default TrainerDashboardPage;
