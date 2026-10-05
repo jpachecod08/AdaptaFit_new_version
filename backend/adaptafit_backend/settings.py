@@ -117,7 +117,10 @@ else:
 
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# MEDIA_ROOT configurable por entorno: en produccion debe apuntar a un disco
+# persistente (p.ej. disco de Render montado en /var/data/media) para que las
+# fotos sobrevivan a reinicios y redespliegues. Si no se define, usa backend/media.
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')
 # Si prefieres usar SQLite durante desarrollo, usa este en lugar del de arriba:
 # DATABASES = {
 #     'default': {

@@ -2172,6 +2172,16 @@ def my_next_session(request):
             ],
         })
 
+    # Ultima sesion completada: para saber si toca entrenar o descansar.
+    # El bucle NO depende del calendario, solo del ritmo del cliente.
+    last_completed = SessionLog.objects.filter(
+        assignment=assignment, is_completed=True
+    ).order_by('-finished_at').first()
+
+    days_since = None
+    if last_completed and last_completed.finished_at:
+        days_since = (timezone.now() - last_completed.finished_at).days
+
     return Response({
         'session_log_id': log.id,
         'session_label': session.label,
@@ -2179,6 +2189,8 @@ def my_next_session(request):
         'session_index': assignment.current_session_index,
         'total_sessions': assignment.routine.total_sessions,
         'routine_name': assignment.routine.name,
+        'last_session_at': last_completed.finished_at if last_completed else None,
+        'days_since_last_session': days_since,
         'exercises': slots_payload,
     })
 
@@ -2374,12 +2386,19 @@ def client_progress_detail(request, client_id):
         assignment=assignment, is_completed=True
     ).order_by('-finished_at')[:10]
 
+    last_finished = logs[0].finished_at if logs else None
+    days_since = None
+    if last_finished:
+        days_since = (timezone.now() - last_finished).days
+
     return Response({
         'assignment': {
             'id': assignment.id,
             'routine_name': assignment.routine.name,
             'current_session_index': assignment.current_session_index,
             'total_sessions': assignment.routine.total_sessions,
+            'last_session_at': last_finished,
+            'days_since_last_session': days_since,
         },
         'progressions': [
             {

@@ -1,11 +1,11 @@
 """
 URL configuration for adaptafit_backend project.
 """
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path, include
-from django.conf import settings                    # ← FALTA
-from django.conf.urls.static import static          # ← FALTA
-from rest_framework.authtoken.views import obtain_auth_token
+from django.urls import include, path, re_path
+from django.views.static import serve
+
 from users.views import LoginView
 
 urlpatterns = [
@@ -15,5 +15,11 @@ urlpatterns = [
     path('api/workouts/', include('workouts.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Archivos subidos por el usuario (fotos de maquinas de exercises/).
+# django.conf.urls.static.static() solo devuelve patrones cuando DEBUG=True,
+# asi que se registra el patron explicitamente para que las fotos se sirvan
+# tanto en desarrollo como en produccion. Valido para un gym de tamano pequeno
+# (pocas fotos, trafico bajo). Si el proyecto crece, mover a Cloudinary/S3.
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]

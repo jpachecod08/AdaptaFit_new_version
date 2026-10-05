@@ -262,6 +262,15 @@ const ClientWorkoutPage = ({ token }) => {
               Tu entrenamiento de hoy
             </h2>
 
+            {session.days_since_last_session !== null && session.days_since_last_session !== undefined && (
+              <p className="text-white/90 text-sm mb-3 flex items-center gap-1.5">
+                <History size={14} />
+                {session.days_since_last_session === 0
+                  ? 'Última sesión: hoy'
+                  : `Última sesión: hace ${session.days_since_last_session} día${session.days_since_last_session === 1 ? '' : 's'}`}
+              </p>
+            )}
+
             <div className="flex items-center justify-between text-white/95 text-sm mb-2">
               <span className="font-semibold">
                 {savedSets}/{totalSets} series
