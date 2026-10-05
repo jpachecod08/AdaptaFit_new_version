@@ -153,9 +153,14 @@ _SUPABASE_ACCESS_KEY = os.environ.get('SUPABASE_S3_ACCESS_KEY', '').strip()
 _SUPABASE_SECRET_KEY = os.environ.get('SUPABASE_S3_SECRET_KEY', '').strip()
 
 if _SUPABASE_BUCKET and _SUPABASE_ENDPOINT and _SUPABASE_ACCESS_KEY and _SUPABASE_SECRET_KEY:
+    # URL publica del bucket: es la unica que responde sin firma. El frontend
+    # la usa tal cual porque ya detecta URLs absolutas.
+    SUPABASE_PUBLIC_MEDIA_URL = (
+        f'https://{_SUPABASE_REF}.supabase.co/storage/v1/object/public/{_SUPABASE_BUCKET}/'
+    )
     STORAGES = {
         'default': {
-            'BACKEND': 'storages.backends.s3.S3Storage',
+            'BACKEND': 'adaptafit_backend.storage.SupabaseStorage',
             'OPTIONS': {
                 'bucket_name': _SUPABASE_BUCKET,
                 'access_key': _SUPABASE_ACCESS_KEY,
@@ -173,7 +178,7 @@ if _SUPABASE_BUCKET and _SUPABASE_ENDPOINT and _SUPABASE_ACCESS_KEY and _SUPABAS
             'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
         },
     }
-    MEDIA_URL = f'https://{_SUPABASE_REF}.supabase.co/storage/v1/object/public/{_SUPABASE_BUCKET}/'
+    MEDIA_URL = SUPABASE_PUBLIC_MEDIA_URL
 
 # -----------------------------
 #   HTTPS Y COOKIES (producción)
