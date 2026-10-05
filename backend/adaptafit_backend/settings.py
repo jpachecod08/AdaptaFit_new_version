@@ -125,9 +125,9 @@ else:
 
 
 MEDIA_URL = '/media/'
-# MEDIA_ROOT configurable por entorno: en produccion debe apuntar a un disco
-# persistente (p.ej. disco de Render montado en /var/data/media) para que las
-# fotos sobrevivan a reinicios y redespliegues. Si no se define, usa backend/media.
+# MEDIA_ROOT configurable por entorno: solo se usa con almacenamiento local.
+# En Render el disco es efimero (las fotos se pierden en cada redespliegue),
+# por eso en produccion lo normal es usar Supabase Storage (ver STORAGES abajo).
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')
 # Si prefieres usar SQLite durante desarrollo, usa este en lugar del de arriba:
 # DATABASES = {
@@ -136,6 +136,44 @@ MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
+# -----------------------------
+#   ALMACENAMIENTO DE ARCHIVOS
+# -----------------------------
+# Con Supabase Storage (endpoint compatible con S3) las fotos sobreviven a los
+# redespliegues de Render. Se activa solo si estan las 4 variables necesarias;
+# si falta alguna, se sigue usando el almacenamiento local en disco.
+_SUPABASE_REF = os.environ.get('SUPABASE_PROJECT_REF', '').strip()
+_SUPABASE_BUCKET = os.environ.get('SUPABASE_S3_BUCKET', '').strip()
+_SUPABASE_ENDPOINT = os.environ.get('SUPABASE_S3_ENDPOINT', '').strip() or (
+    f'https://{_SUPABASE_REF}.supabase.co/storage/v1/s3' if _SUPABASE_REF else ''
+)
+_SUPABASE_REGION = os.environ.get('SUPABASE_S3_REGION', 'us-west-2').strip()
+_SUPABASE_ACCESS_KEY = os.environ.get('SUPABASE_S3_ACCESS_KEY', '').strip()
+_SUPABASE_SECRET_KEY = os.environ.get('SUPABASE_S3_SECRET_KEY', '').strip()
+
+if _SUPABASE_BUCKET and _SUPABASE_ENDPOINT and _SUPABASE_ACCESS_KEY and _SUPABASE_SECRET_KEY:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                'bucket_name': _SUPABASE_BUCKET,
+                'access_key': _SUPABASE_ACCESS_KEY,
+                'secret_key': _SUPABASE_SECRET_KEY,
+                'region_name': _SUPABASE_REGION,
+                'endpoint_url': _SUPABASE_ENDPOINT,
+                'addressing_style': 'path',
+                'querystring_auth': False,
+                'default_acl': None,
+                'file_overwrite': False,
+                'max_memory_size': 2621440,
+            },
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+    MEDIA_URL = f'https://{_SUPABASE_REF}.supabase.co/storage/v1/object/public/{_SUPABASE_BUCKET}/'
 
 # -----------------------------
 #   HTTPS Y COOKIES (producción)
