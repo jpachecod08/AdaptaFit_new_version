@@ -146,7 +146,7 @@ MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')
 _SUPABASE_REF = os.environ.get('SUPABASE_PROJECT_REF', '').strip()
 _SUPABASE_BUCKET = os.environ.get('SUPABASE_S3_BUCKET', '').strip()
 _SUPABASE_ENDPOINT = os.environ.get('SUPABASE_S3_ENDPOINT', '').strip() or (
-    f'https://{_SUPABASE_REF}.supabase.co/storage/v1/s3' if _SUPABASE_REF else ''
+    f'https://{_SUPABASE_REF}.storage.supabase.co/storage/v1/s3' if _SUPABASE_REF else ''
 )
 _SUPABASE_REGION = os.environ.get('SUPABASE_S3_REGION', 'us-west-2').strip()
 _SUPABASE_ACCESS_KEY = os.environ.get('SUPABASE_S3_ACCESS_KEY', '').strip()
