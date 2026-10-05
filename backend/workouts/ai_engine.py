@@ -24,11 +24,14 @@ except ImportError:
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 # Por defecto usamos un modelo reciente: las llaves nuevas de Gemini ya no
-# tienen acceso a gemini-1.5-flash. Se puede sobreescribir con GEMINI_MODEL.
+# tienen acceso a gemini-1.5-flash ni a los gemini-2.5-flash-lite (devuelven 404).
+# Se puede sobreescribir con GEMINI_MODEL.
 DEFAULT_MODEL = 'gemini-3.6-flash'
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', DEFAULT_MODEL)
 # Fallbacks en orden de prioridad si el modelo configurado falla/no existe.
-FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite']
+# Verificados contra la API: gemini-2.5-flash-lite da 404 y gemini-3.5-flash
+# devuelve 503 por saturacion, asi que no sirven como respaldo.
+FALLBACK_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash']
 
 _model = None
 
@@ -66,13 +69,15 @@ def _generate(prompt, temperature=0.7):
     candidatos = [GEMINI_MODEL] + [m for m in FALLBACK_MODELS if m != GEMINI_MODEL]
     import time
     for modelo in candidatos:
-        for intento in range(3):
+        for intento in range(2):
             try:
                 genai.configure(api_key=GEMINI_API_KEY)
                 modelo_ia = genai.GenerativeModel(modelo)
                 respuesta = modelo_ia.generate_content(
                     prompt,
                     generation_config={"temperature": temperature},
+                    # Sin timeout, una llamada colgada deja al usuario esperando
+                    request_options={"timeout": 30},
                 )
                 texto = getattr(respuesta, "text", "") or ""
                 return texto.strip() or None
@@ -80,10 +85,10 @@ def _generate(prompt, temperature=0.7):
                 codigo = getattr(getattr(e, "response", None), "status_code", None)
                 print(f"[IA] Modelo '{modelo}' (intento {intento + 1}) falló: {e}")
                 if codigo in (429, 500, 503):
-                    time.sleep(4 + 3 * intento)
+                    # Reintento corto: el chat no debe colgarse mucho tiempo
+                    # cuando un modelo esta saturado.
+                    time.sleep(2 + 2 * intento)
                     continue
-                if codigo == 404:
-                    break
                 break
     return None
 
