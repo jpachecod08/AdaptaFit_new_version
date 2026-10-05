@@ -1,4 +1,5 @@
 import os
+import secrets
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -6,15 +7,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -----------------------------
 #       CONFIGURACIÓN BASE
 # -----------------------------
-# SECRET_KEY desde variable de entorno. En producción es OBLIGATORIO definirlo.
-# El fallback solo es seguro para desarrollo local (DEBUG=True).
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-!x8@8f$8k^6#m&gv3b%2q#9t+7w!z5*yu2a@4$6r&n^c#1p(9s'
-)
+# DEBUG se activa SOLO si DJANGO_DEBUG vale true/1/yes/on.
+# Por defecto es False a proposito: con DEBUG=True, Django publica la pagina de
+# error con TODA la configuracion (incluida la contrasena de la base de datos)
+# en un endpoint publico. En produccion nunca debe quedar activo.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').strip().lower() in ('true', '1', 'yes', 'on')
 
-# DEBUG se activa solo si no se define DJANGO_DEBUG o si es 'True'
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+# SECRET_KEY desde variable de entorno. En produccion es OBLIGATORIO definirlo.
+# El fallback versionado solo es aceptable con DEBUG=True (desarrollo local).
+_INSECURE_SECRET_KEY = 'django-insecure-!x8@8f$8k^6#m&gv3b%2q#9t+7w!z5*yu2a@4$6r&n^c#1p(9s'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '') or _INSECURE_SECRET_KEY
+if not DEBUG and SECRET_KEY == _INSECURE_SECRET_KEY:
+    # No usamos la clave insegura del repo en produccion. Generamos una
+    # aleatoria para este proceso en vez de fallar el arranque: la API usa
+    # autenticacion por token, no sesiones, asi que no se pierde funcionalidad.
+    SECRET_KEY = secrets.token_urlsafe(64)
 
 # Hosts permitidos: siempre localhost/127.0.0.1, más los definidos en ALLOWED_HOSTS (coma-separados)
 _DEFAULT_HOSTS = ['localhost', '127.0.0.1', '.localhost', '.onrender.com', '.netlify.app']
@@ -62,6 +69,7 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # DEBE SER EL PRIMERO
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # sirve /static/ con DEBUG=False
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -130,6 +138,25 @@ MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')
 # }
 
 # -----------------------------
+#   HTTPS Y COOKIES (producción)
+# -----------------------------
+# Render termina TLS y reenvía por HTTP interno usando X-Forwarded-Proto.
+# Sin esto Django creería que la petición no es segura y el SSL_REDIRECT
+# entraría en bucle de redirecciones.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Escape hatch: DJANGO_FORCE_HTTPS=False desactiva la redirección si el proxy
+# de tu hosting no envía la cabecera anterior.
+SECURE_SSL_REDIRECT = (
+    not DEBUG and os.environ.get('DJANGO_FORCE_HTTPS', 'True').strip().lower() in ('true', '1', 'yes', 'on')
+)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  # el admin de Django necesita leerlo desde JS
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# -----------------------------
 #        INTERNACIONALIZACIÓN
 # -----------------------------
 LANGUAGE_CODE = 'es-mx'
@@ -143,6 +170,9 @@ USE_TZ = True
 # -----------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# En desarrollo whitenoise busca los archivos sin necesidad de collectstatic.
+WHITENOISE_USE_FINDERS = DEBUG
+WHITENOISE_AUTOREFRESH = DEBUG
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
