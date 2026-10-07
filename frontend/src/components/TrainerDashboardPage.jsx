@@ -20,6 +20,9 @@ const TrainerDashboardPage = ({ onLogout }) => {
   const [activeTable, setActiveTable] = useState('all'); // 'all' | 'clients'
   const [esAdmin, setEsAdmin] = useState(false);
 
+  // 🆕 Toast para mensajes amigables (403, 404, etc.)
+  const [toast, setToast] = useState(null);
+
   // Búsqueda
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -36,6 +39,12 @@ const TrainerDashboardPage = ({ onLogout }) => {
   const getAuthHeader = () => {
     const token = localStorage.getItem('authToken');
     return token ? `Token ${token}` : null;
+  };
+
+  // 🆕 Helper para mostrar toasts
+  const flash = (tipo, msg) => {
+    setToast({ tipo, msg });
+    setTimeout(() => setToast(null), 5000);
   };
 
   useEffect(() => {
@@ -59,6 +68,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
       await Promise.all([fetchClients(), fetchAllUsers(), fetchPermisos()]);
     };
     verifyAndFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   // El permiso de administrador viene del perfil, no del rol.
@@ -99,9 +109,12 @@ const TrainerDashboardPage = ({ onLogout }) => {
     }
   };
 
+  // 🆕 Detalle con manejo amigable de 403/404
   const viewClientDetails = async (clientId) => {
     try {
       const authHeader = getAuthHeader();
+
+      // 1. Info básica del cliente (users app)
       const infoResp = await axios.get(
         `${API_URL}/api/users/trainer/clients/${clientId}/`,
         { headers: { Authorization: authHeader } }
@@ -109,6 +122,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
       setSelectedClient(infoResp.data);
       setViewDialogOpen(true);
 
+      // 2. Progreso del cliente (workouts app)
       setProgressLoading(true);
       try {
         const progResp = await axios.get(
@@ -116,13 +130,28 @@ const TrainerDashboardPage = ({ onLogout }) => {
           { headers: { Authorization: authHeader } }
         );
         setClientProgress(progResp.data);
-      } catch {
-        setClientProgress(null);
+      } catch (innerErr) {
+        // 404 = sin asignación aún → mostramos mensaje dentro del modal
+        if (innerErr.response?.status === 404) {
+          setClientProgress(null);
+        } else if (innerErr.response?.status === 403) {
+          // 403 = el backend todavía responde 403 (por si no aplicaste el fix)
+          setClientProgress(null);
+          flash('aviso', 'Este cliente no está asignado a ti.');
+        } else {
+          setClientProgress(null);
+        }
       } finally {
         setProgressLoading(false);
       }
     } catch (err) {
-      setError('Error al cargar detalles: ' + err.message);
+      if (err.response?.status === 403) {
+        flash('aviso', 'No tienes permiso para ver este cliente.');
+      } else if (err.response?.status === 404) {
+        flash('aviso', 'Cliente no encontrado.');
+      } else {
+        flash('error', 'Error al cargar detalles del cliente.');
+      }
     }
   };
 
@@ -130,18 +159,6 @@ const TrainerDashboardPage = ({ onLogout }) => {
     const roomId = `adaptafit-${clientId}-${Date.now()}`;
     setVideoLink(`https://meet.jit.si/${roomId}`);
     setVideoDialogOpen(true);
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Sin actividad';
-    try {
-      const d = new Date(dateString);
-      return d.toLocaleDateString('es-ES', {
-        day: '2-digit', month: '2-digit', year: '2-digit',
-      });
-    } catch {
-      return 'Fecha inválida';
-    }
   };
 
   const goToRoutineBuilder = (clientId = null) => {
@@ -222,7 +239,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
       {/* ============ MAIN ============ */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
 
-        {/* Mensajes */}
+        {/* Mensajes globales */}
         {error && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
             className="mb-6 p-4 bg-red-500/10 border-l-4 border-red-500 text-red-300 rounded-xl flex items-start gap-3">
@@ -360,6 +377,30 @@ const TrainerDashboardPage = ({ onLogout }) => {
           onClose={() => setVideoDialogOpen(false)}
         />
       )}
+
+      {/* ============ TOAST ============ */}
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: 60, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 60, scale: 0.95 }}
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)] px-5 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-start gap-3 ${
+            toast.tipo === 'error' ? 'bg-rose-500/15 border-rose-500/40'
+              : toast.tipo === 'aviso' ? 'bg-amber-500/15 border-amber-500/40'
+                : 'bg-emerald-500/15 border-emerald-500/40'
+          }`}
+        >
+          {toast.tipo === 'error'
+            ? <AlertTriangle size={20} className="text-rose-400 shrink-0 mt-0.5" />
+            : toast.tipo === 'aviso'
+              ? <AlertTriangle size={20} className="text-amber-400 shrink-0 mt-0.5" />
+              : <CheckCircle size={20} className="text-emerald-400 shrink-0 mt-0.5" />}
+          <p className="text-white text-sm flex-1">{toast.msg}</p>
+          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white">
+            <X size={16} />
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 };
@@ -431,64 +472,73 @@ const UsersTable = ({ users, onAssign, onView, onVideo }) => {
         </tr>
       </thead>
       <tbody>
-        {users.map((u) => (
-          <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-all">
-            <td className="py-4 px-6">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-lime-400 flex items-center justify-center text-slate-900 font-extrabold">
-                  {u.name?.charAt(0)?.toUpperCase() || 'U'}
+        {users.map((u) => {
+          // 🆕 El ojito solo si es mi cliente
+          const puedeVerDetalle = u.is_mine === true;
+
+          return (
+            <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+              <td className="py-4 px-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-lime-400 flex items-center justify-center text-slate-900 font-extrabold">
+                    {u.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">{u.name}</p>
+                    <p className="text-slate-400 text-xs flex items-center gap-1">
+                      <Mail size={12} />
+                      {u.email}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-white font-semibold">{u.name}</p>
-                  <p className="text-slate-400 text-xs flex items-center gap-1">
-                    <Mail size={12} />
-                    {u.email}
-                  </p>
+              </td>
+              <td className="py-4 px-6">
+                <p className="text-slate-300 text-sm flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-500" />
+                  {new Date(u.date_joined).toLocaleDateString('es-ES')}
+                </p>
+              </td>
+              <td className="py-4 px-6">
+                {u.is_mine ? (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                    <CheckCircle size={12} /> Mi cliente
+                  </span>
+                ) : u.has_trainer ? (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
+                    Otro entrenador
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-500/20 text-slate-300 text-xs font-semibold border border-slate-500/30">
+                    Sin asignar
+                  </span>
+                )}
+              </td>
+              <td className="py-4 px-6">
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => onAssign(u.id)}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-600 hover:to-lime-600 text-slate-900 text-xs font-bold flex items-center gap-1.5 transition-all"
+                    title="Asignar rutina"
+                  >
+                    <PlusCircle size={14} />
+                    Rutina
+                  </button>
+
+                  {/* 🆕 Ojito solo si es mi cliente */}
+                  {puedeVerDetalle && (
+                    <button
+                      onClick={() => onView(u.id)}
+                      className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
+                      title="Ver detalles"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  )}
                 </div>
-              </div>
-            </td>
-            <td className="py-4 px-6">
-              <p className="text-slate-300 text-sm flex items-center gap-2">
-                <Calendar size={14} className="text-slate-500" />
-                {new Date(u.date_joined).toLocaleDateString('es-ES')}
-              </p>
-            </td>
-            <td className="py-4 px-6">
-              {u.is_mine ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
-                  <CheckCircle size={12} /> Mi cliente
-                </span>
-              ) : u.has_trainer ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
-                  Otro entrenador
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-500/20 text-slate-300 text-xs font-semibold border border-slate-500/30">
-                  Sin asignar
-                </span>
-              )}
-            </td>
-            <td className="py-4 px-6">
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => onAssign(u.id)}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-600 hover:to-lime-600 text-slate-900 text-xs font-bold flex items-center gap-1.5 transition-all"
-                  title="Asignar rutina"
-                >
-                  <PlusCircle size={14} />
-                  Rutina
-                </button>
-                <button
-                  onClick={() => onView(u.id)}
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
-                  title="Ver detalles"
-                >
-                  <Eye size={16} />
-                </button>
-              </div>
-            </td>
-          </tr>
-        ))}
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -669,7 +719,7 @@ const ClientDetailsModal = ({ client, progress, progressLoading, onClose, onAssi
                       Rutina: {progress.assignment?.routine_name}
                     </p>
                     <p className="text-slate-400 text-sm">
-                      Sesión {progress.assignment?.current_session_index + 1} de {progress.assignment?.total_sessions}
+                      Sesión {(progress.assignment?.current_session_index || 0) + 1} de {progress.assignment?.total_sessions}
                     </p>
                   </div>
 

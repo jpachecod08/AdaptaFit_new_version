@@ -2458,7 +2458,6 @@ def my_progress(request):
 
 
 # ---------- ENTRENADOR: progreso de un cliente ----------
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -2471,7 +2470,11 @@ def client_progress_detail(request, client_id):
         client_id=client_id, trainer=request.user, is_active=True
     ).first()
     if not assignment:
-        return Response({'error': 'Sin asignación activa para este cliente'}, status=404)
+        # 🆕 Antes era 404 pero con mensaje genérico; ahora es explícito
+        return Response(
+            {'detail': 'Este cliente no está asignado a ti.'},
+            status=404,
+        )
 
     progressions = ExerciseProgression.objects.filter(
         client_id=client_id
@@ -2532,7 +2535,6 @@ def my_monthly_board(request):
         return Response({'detail': 'Sin tablero activo'}, status=404)
     return Response(MonthlyProgressBoardSerializer(board).data)
 
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -2540,6 +2542,17 @@ def client_monthly_board(request, client_id):
     """El entrenador ve el tablero mensual de un cliente."""
     if not es_entrenador_o_superusuario(request.user):
         return Response({'error': 'Solo entrenadores'}, status=403)
+
+    # 🆕 Verificar que el cliente sea SUYO
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response(
+            {'detail': 'Este cliente no está asignado a ti.'},
+            status=404,
+        )
+
     board = MonthlyProgressBoard.objects.filter(
         client_id=client_id, trainer=request.user
     ).order_by('-month').first()
@@ -2624,7 +2637,6 @@ def my_learning_points(request):
     lp, _ = ClientLearningPoint.objects.get_or_create(client=request.user)
     return Response(ClientLearningPointSerializer(lp).data)
 
-
 @api_view(['GET', 'PATCH'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -2632,6 +2644,16 @@ def client_learning_points(request, client_id):
     """El entrenador consulta o marca los Puntos de Progreso de un cliente."""
     if not es_entrenador_o_superusuario(request.user):
         return Response({'error': 'Solo entrenadores'}, status=403)
+
+    # 🆕 Verificar que el cliente sea SUYO
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response(
+            {'detail': 'Este cliente no está asignado a ti.'},
+            status=404,
+        )
 
     lp, _ = ClientLearningPoint.objects.get_or_create(client_id=client_id)
 
@@ -2655,7 +2677,6 @@ def client_learning_points(request, client_id):
 
     return Response(ClientLearningPointSerializer(lp).data)
 
-
 @api_view(['GET', 'POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -2665,13 +2686,36 @@ def structure_changes(request, client_id):
     POST: el entrenador registra un cambio con motivo.
     """
     if request.method == 'GET':
-        if request.user.id != int(client_id) and not es_entrenador_o_superusuario(request.user):
-            return Response({'error': 'No autorizado'}, status=403)
+        # Cliente dueño o entrenador con asignación
+        es_dueño = request.user.id == int(client_id)
+        if not es_dueño:
+            if not es_entrenador_o_superusuario(request.user):
+                return Response({'error': 'No autorizado'}, status=403)
+            # 🆕 Verificar asignación
+            assignment = ClientAssignment.objects.filter(
+                client_id=client_id, trainer=request.user, is_active=True
+            ).first()
+            if not assignment:
+                return Response(
+                    {'detail': 'Este cliente no está asignado a ti.'},
+                    status=404,
+                )
+
         qs = StructureChangeLog.objects.filter(client_id=client_id).order_by('-created_at')
         return Response(StructureChangeLogSerializer(qs, many=True).data)
 
     if not es_entrenador_o_superusuario(request.user):
         return Response({'error': 'Solo entrenadores'}, status=403)
+
+    # 🆕 Verificar asignación antes de crear
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response(
+            {'detail': 'Este cliente no está asignado a ti.'},
+            status=404,
+        )
 
     data = request.data
     log = StructureChangeLog.objects.create(
@@ -2702,7 +2746,6 @@ def acknowledge_structure_change(request, change_id):
 # ============================================================
 # COACH — ACCIONES DE PROGRESO
 # ============================================================
-
 @api_view(['GET', 'POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -2710,6 +2753,16 @@ def coach_actions(request, client_id):
     """El entrenador registra o lista acciones de progreso sobre un cliente."""
     if not es_entrenador_o_superusuario(request.user):
         return Response({'error': 'Solo entrenadores'}, status=403)
+
+    # 🆕 Verificar asignación
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response(
+            {'detail': 'Este cliente no está asignado a ti.'},
+            status=404,
+        )
 
     if request.method == 'GET':
         qs = CoachProgressAction.objects.filter(
