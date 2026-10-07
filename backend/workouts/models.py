@@ -326,3 +326,29 @@ class ExerciseProgression(models.Model):
 
     def __str__(self):
         return f'{self.client.email} - {self.slot.exercise_template.name}: {self.current_weight_kg}kg'
+
+# ---------- BLACK GYM: PUNTOS DE PROGRESO DEL COACH ----------
+class CoachProgressAction(models.Model):
+    ACTION_CHOICES = (
+        ('confirm_result', 'Confirmar resultado de serie'),
+        ('correct_technique', 'Corregir técnica'),
+        ('guide_to_failure', 'Guiar serie al fallo'),
+        ('teach_progression', 'Enseñar sobrecarga progresiva'),
+        ('reinforce_good', 'Reforzar buena ejecución'),
+        ('explain_structure', 'Explicar estructura del entrenamiento'),
+        ('update_structure', 'Actualizar estructura de entrenamiento'),
+        ('other', 'Otra acción'),
+    )
+    coach = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coach_progress_actions')
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_progress_points')
+    assignment = models.ForeignKey('workouts.ClientAssignment', on_delete=models.SET_NULL, null=True, blank=True)
+    session_log = models.ForeignKey('workouts.SessionLog', on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES)
+    notes = models.TextField(blank=True, default='')
+    generated_progress_point = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Acción de progreso del coach'
+        verbose_name_plural = 'Acciones de progreso del coach'
+    def __str__(self): return f'{self.coach.email} → {self.client.email}: {self.action}'
