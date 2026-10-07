@@ -51,6 +51,21 @@ urlpatterns = [
     path('session-log/<int:session_log_id>/finish/', views.finish_session, name='finish-session'),
     path('apply-progression/<int:slot_id>/', views.apply_progression, name='apply-progression'),
     path('my-progress/', views.my_progress, name='my-progress'),
+    # workouts/urls.py (agregar estas líneas a tu archivo existente)
+
+    # Tablero mensual
+    path('my-monthly-board/', views.my_monthly_board, name='my_monthly_board'),
+    path('clients/<int:client_id>/monthly-board/', views.client_monthly_board, name='client_monthly_board'),
+    path('clients/<int:client_id>/monthly-board/create/', views.create_monthly_board, name='create_monthly_board'),
+
+    # Método Enseñando a Entrenar
+    path('my-learning-points/', views.my_learning_points, name='my_learning_points'),
+    path('clients/<int:client_id>/learning-points/', views.client_learning_points, name='client_learning_points'),
+    path('clients/<int:client_id>/structure-changes/', views.structure_changes, name='structure_changes'),
+    path('structure-changes/<int:change_id>/acknowledge/', views.acknowledge_structure_change, name='acknowledge_structure_change'),
+
+    # Coach
+    path('clients/<int:client_id>/coach-actions/', views.coach_actions, name='coach_actions'),
 
     # Entrenador: progreso de un cliente
     path('clients/<int:client_id>/progress/', views.client_progress_detail, name='client-progress-detail'),

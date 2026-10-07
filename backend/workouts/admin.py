@@ -1,8 +1,12 @@
 from django.contrib import admin
-
-from .models import (ClientAssignment, Exercise, ExerciseProgression, ExerciseTemplate,
-                     RoutineTemplate, SessionExerciseSlot, SessionLog, SessionTemplate,
-                     SetLog, WorkoutDay, WorkoutExercise, WorkoutHistory, WorkoutPlan)
+from .models import (
+    ClientAssignment, Exercise, ExerciseProgression, ExerciseTemplate,
+    RoutineTemplate, SessionExerciseSlot, SessionLog, SessionTemplate,
+    SetLog, WorkoutDay, WorkoutExercise, WorkoutHistory, WorkoutPlan,
+    MonthlyProgressBoard, BoardSession, BoardExerciseEntry,
+    BoardExerciseSessionData, ClientLearningPoint, StructureChangeLog,
+    CoachProgressAction,
+)
 
 admin.site.register(Exercise)
 admin.site.register(WorkoutPlan)
@@ -55,8 +59,9 @@ class SessionLogAdmin(admin.ModelAdmin):
 
 @admin.register(SetLog)
 class SetLogAdmin(admin.ModelAdmin):
-    list_display = ('session_log', 'slot', 'set_number', 'weight_used_kg', 'reps_done')
-    list_filter = ('weight_used_kg',)
+    list_display = ('session_log', 'slot', 'set_number', 'weight_used_kg',
+                    'reps_done', 'reached_failure')
+    list_filter = ('weight_used_kg', 'reached_failure')
 
 
 @admin.register(ExerciseProgression)
@@ -64,3 +69,82 @@ class ExerciseProgressionAdmin(admin.ModelAdmin):
     list_display = ('client', 'slot', 'current_weight_kg', 'times_increased',
                     'ready_to_increase')
     list_filter = ('ready_to_increase',)
+
+
+# ============================================================
+# TABLERO DE PROGRESO MENSUAL
+# ============================================================
+
+class BoardExerciseSessionDataInline(admin.TabularInline):
+    model = BoardExerciseSessionData
+    extra = 0
+    fields = ('board_session', 'weight_kg', 'reps_done', 'reached_failure', 'coach_note')
+
+
+class BoardExerciseEntryInline(admin.TabularInline):
+    model = BoardExerciseEntry
+    extra = 0
+    fields = ('order', 'slot')
+
+
+@admin.register(MonthlyProgressBoard)
+class MonthlyProgressBoardAdmin(admin.ModelAdmin):
+    list_display = ('client', 'month', 'goal', 'training_block',
+                    'frequency_per_week', 'status')
+    list_filter = ('goal', 'status', 'month')
+    search_fields = ('client__email', 'client__nombre', 'training_block')
+    inlines = [BoardExerciseEntryInline]
+
+
+@admin.register(BoardSession)
+class BoardSessionAdmin(admin.ModelAdmin):
+    list_display = ('board', 'session_number', 'week_number', 'phase', 'date')
+    list_filter = ('phase', 'week_number')
+
+
+@admin.register(BoardExerciseEntry)
+class BoardExerciseEntryAdmin(admin.ModelAdmin):
+    list_display = ('board', 'order', 'slot')
+    list_filter = ('board',)
+
+
+@admin.register(BoardExerciseSessionData)
+class BoardExerciseSessionDataAdmin(admin.ModelAdmin):
+    list_display = ('entry', 'board_session', 'weight_kg', 'reps_done',
+                    'reached_failure')
+    list_filter = ('reached_failure', 'board_session__phase')
+
+
+# ============================================================
+# MÉTODO ENSEÑANDO A ENTRENAR
+# ============================================================
+
+@admin.register(ClientLearningPoint)
+class ClientLearningPointAdmin(admin.ModelAdmin):
+    list_display = ('client', 'knows_structure', 'executes_correctly',
+                    'knows_progression', 'trains_autonomously',
+                    'understands_evolution', 'completion_percentage')
+    list_filter = ('knows_structure', 'executes_correctly', 'knows_progression',
+                   'trains_autonomously', 'understands_evolution')
+    search_fields = ('client__email', 'client__nombre')
+    readonly_fields = ('updated_at',)
+
+
+@admin.register(StructureChangeLog)
+class StructureChangeLogAdmin(admin.ModelAdmin):
+    list_display = ('client', 'change_type', 'changed_by', 'created_at',
+                    'client_acknowledged')
+    list_filter = ('change_type', 'client_acknowledged')
+    search_fields = ('client__email', 'reason')
+
+
+# ============================================================
+# COACH
+# ============================================================
+
+@admin.register(CoachProgressAction)
+class CoachProgressActionAdmin(admin.ModelAdmin):
+    list_display = ('coach', 'client', 'action', 'created_at',
+                    'generated_progress_point')
+    list_filter = ('action', 'generated_progress_point')
+    search_fields = ('coach__email', 'client__email')

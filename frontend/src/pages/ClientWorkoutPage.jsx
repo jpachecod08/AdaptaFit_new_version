@@ -4,10 +4,37 @@ import { motion } from 'framer-motion';
 import {
   CheckCircle, Dumbbell, TrendingUp, ChevronDown, ArrowUp,
   ArrowLeft, Flame, AlertCircle, Loader2, X,
-  History, Info, Target, Save,
+  History, Info, Target, Save, Zap, Moon, Skull,
 } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config';
+
+// ============================================================
+// Helpers de fase (Impacto / Descarga / Potencia)
+// ============================================================
+const PHASE_META = {
+  impacto: {
+    label: 'Impacto',
+    desc: 'Máxima intensidad. Si logras 15 reps con buena técnica, sube el peso en la próxima sesión.',
+    color: 'from-emerald-500/20 to-lime-500/20 border-emerald-500/40',
+    chip: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    icon: Flame,
+  },
+  descarga: {
+    label: 'Descarga',
+    desc: 'Entrena lejos del fallo. Mantén las cargas y reduce el esfuerzo para recuperar el sistema nervioso.',
+    color: 'from-sky-500/20 to-blue-500/20 border-sky-500/40',
+    chip: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+    icon: Moon,
+  },
+  potencia: {
+    label: 'Fuerza / Potencia',
+    desc: 'Sube el peso. El objetivo es exigir al músculo al límite: máximo 6 reps por serie.',
+    color: 'from-amber-500/20 to-orange-500/20 border-amber-500/40',
+    chip: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    icon: Zap,
+  },
+};
 
 const ClientWorkoutPage = ({ token }) => {
   const navigate = useNavigate();
@@ -21,11 +48,11 @@ const ClientWorkoutPage = ({ token }) => {
   const [finishedAlerts, setFinishedAlerts] = useState([]);
   const [noAssignment, setNoAssignment] = useState(false);
 
-  // 🆕 Acordeones abiertos por defecto (todos)
   const [openAccordions, setOpenAccordions] = useState({});
 
   useEffect(() => {
     fetchNextSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchNextSession = async () => {
@@ -43,6 +70,7 @@ const ClientWorkoutPage = ({ token }) => {
           return {
             reps: savedSet ? savedSet.reps : '',
             weight: savedSet ? savedSet.weight : ex.current_weight_kg,
+            reached_failure: savedSet ? !!savedSet.reached_failure : false,
             saved: !!savedSet,
           };
         });
@@ -82,6 +110,7 @@ const ClientWorkoutPage = ({ token }) => {
           slot_id: slotId,
           reps_done: parseInt(s.reps),
           weight_used_kg: parseFloat(s.weight),
+          reached_failure: !!s.reached_failure,
         },
         { headers }
       );
@@ -202,6 +231,10 @@ const ClientWorkoutPage = ({ token }) => {
   const savedSets = Object.values(setsInput).flat().filter(s => s.saved).length;
   const progress = totalSets > 0 ? Math.round((savedSets / totalSets) * 100) : 0;
 
+  const phase = session.phase || 'impacto';
+  const phaseMeta = PHASE_META[phase] || PHASE_META.impacto;
+  const PhaseIcon = phaseMeta.icon;
+
   // ==================== RENDER ====================
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 relative overflow-hidden">
@@ -251,10 +284,18 @@ const ClientWorkoutPage = ({ token }) => {
           </div>
 
           <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <Target size={18} className="text-white/90" />
-              <span className="text-white/90 text-xs font-bold uppercase tracking-widest">
-                Sesión {session.session_index + 1} de {session.total_sessions}
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Target size={18} className="text-white/90" />
+                <span className="text-white/90 text-xs font-bold uppercase tracking-widest">
+                  Sesión {session.session_index + 1} de {session.total_sessions}
+                </span>
+              </div>
+
+              {/* 🆕 Badge de fase */}
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-widest border ${phaseMeta.chip}`}>
+                <PhaseIcon size={12} />
+                {phaseMeta.label}
               </span>
             </div>
 
@@ -289,30 +330,58 @@ const ClientWorkoutPage = ({ token }) => {
           </div>
         </motion.div>
 
+        {/* 🆕 BANNER DE FASE */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 p-4 rounded-2xl bg-gradient-to-r border flex items-start gap-3 ${phaseMeta.color}`}
+        >
+          <PhaseIcon className="text-white flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="text-white font-bold text-sm uppercase tracking-widest">
+              Semana de {phaseMeta.label}
+            </p>
+            <p className="text-white/90 text-sm mt-0.5">{phaseMeta.desc}</p>
+          </div>
+        </motion.div>
+
         {/* ALERTAS DE PROGRESIÓN AL CERRAR */}
         {finishedAlerts.length > 0 && (
           <div className="mb-6 space-y-2">
-            {finishedAlerts.map((a, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-lime-500/20 border border-lime-500/40 flex items-start gap-3"
-              >
-                <TrendingUp className="text-lime-400 flex-shrink-0 mt-0.5" size={20} />
-                <div>
-                  <p className="text-white font-bold">{a.exercise}</p>
-                  <p className="text-lime-300 text-sm">{a.message}</p>
-                </div>
-              </motion.div>
-            ))}
+            {finishedAlerts.map((a, i) => {
+              const isPowerWarning = a.phase === 'potencia';
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`p-4 rounded-2xl border flex items-start gap-3 ${
+                    isPowerWarning
+                      ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/40'
+                      : 'bg-gradient-to-r from-amber-500/20 to-lime-500/20 border-lime-500/40'
+                  }`}
+                >
+                  {isPowerWarning ? (
+                    <Zap className="text-amber-400 flex-shrink-0 mt-0.5" size={20} />
+                  ) : (
+                    <TrendingUp className="text-lime-400 flex-shrink-0 mt-0.5" size={20} />
+                  )}
+                  <div>
+                    <p className="text-white font-bold">{a.exercise}</p>
+                    <p className={`text-sm ${isPowerWarning ? 'text-amber-300' : 'text-lime-300'}`}>
+                      {a.message}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
 
         {/* EJERCICIOS */}
         <div className="space-y-4">
           {session.exercises.map((ex, exIdx) => {
-            const isOpen = openAccordions[ex.slot_id] !== false; // abierto por defecto
+            const isOpen = openAccordions[ex.slot_id] !== false;
             const exerciseSets = setsInput[ex.slot_id] || [];
             const savedExSets = exerciseSets.filter(s => s.saved).length;
             const totalExSets = exerciseSets.length;
@@ -394,9 +463,21 @@ const ClientWorkoutPage = ({ token }) => {
                           <p className="text-white font-bold">{ex.current_weight_kg} kg</p>
                         </div>
                       </div>
-                      {ex.increment_kg > 0 && (
+
+                      {/* Nota según fase */}
+                      {phase === 'impacto' && ex.increment_kg > 0 && (
                         <p className="text-slate-400 text-xs mt-2">
-                          Al dominar el rango, sube <strong className="text-lime-400">+{ex.increment_kg} kg</strong>
+                          Al llegar a <strong className="text-lime-400">{ex.target_reps_max} reps</strong> con buena técnica, sube <strong className="text-lime-400">+{ex.increment_kg} kg</strong>.
+                        </p>
+                      )}
+                      {phase === 'descarga' && (
+                        <p className="text-sky-300 text-xs mt-2">
+                          🧘 Descarga: no busques el fallo. Mantén {ex.current_weight_kg} kg y quédate con 2-3 reps en reserva.
+                        </p>
+                      )}
+                      {phase === 'potencia' && (
+                        <p className="text-amber-300 text-xs mt-2">
+                          ⚡ Potencia: sube el peso. Máximo <strong>6 reps</strong> por serie.
                         </p>
                       )}
                     </div>
@@ -536,6 +617,21 @@ const ClientWorkoutPage = ({ token }) => {
                               )}
                             </div>
                           </div>
+
+                          {/* 🆕 Checkbox "Llegué al fallo" */}
+                          <label className={`mt-3 flex items-center gap-2 cursor-pointer select-none ${s.saved ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={!!s.reached_failure}
+                              onChange={e => updateSet(ex.slot_id, i, 'reached_failure', e.target.checked)}
+                              disabled={s.saved}
+                              className="w-4 h-4 rounded border-white/20 bg-slate-900/50 text-amber-500 focus:ring-amber-500/40 focus:ring-2"
+                            />
+                            <Skull size={14} className="text-amber-400" />
+                            <span className="text-xs text-slate-300 font-medium">
+                              Llegué al fallo técnico en esta serie
+                            </span>
+                          </label>
                         </div>
                       ))}
                     </div>

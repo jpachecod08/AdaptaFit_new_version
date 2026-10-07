@@ -16,6 +16,8 @@ const UserDashboardPage = ({ token, onLogout }) => {
   const [manualAssignment, setManualAssignment] = useState(null);
   const [myProgress, setMyProgress] = useState(null);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [monthlyBoard, setMonthlyBoard] = useState(null);
+  const [learningPoints, setLearningPoints] = useState(null);
 
   const navigate = useNavigate();
 
@@ -25,6 +27,7 @@ const UserDashboardPage = ({ token, onLogout }) => {
       return;
     }
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, navigate]);
 
   const fetchAll = async () => {
@@ -34,14 +37,11 @@ const UserDashboardPage = ({ token, onLogout }) => {
       // 1. Perfil
       const profileResp = await axios.get(`${API_URL}/api/users/profile/`, { headers });
       const user = profileResp.data;
-        setUserData({
-          id: user.id,
-          email: user.email,
-          name: user.nombre || user.email.split('@')[0],
-          role: user.role,
-          es_admin: user.es_admin,
-        });
-
+      setUserData({
+        id: user.id, email: user.email,
+        name: user.nombre || user.email.split('@')[0],
+        role: user.role, es_admin: user.es_admin,
+      });
 
       if (user.role !== 'usuario') {
         onLogout();
@@ -64,8 +64,23 @@ const UserDashboardPage = ({ token, onLogout }) => {
       } catch {
         setMyProgress({ exercises: [], total_sessions_completed: 0 });
       }
+
+      // 4. Tablero mensual
+      try {
+        const board = await axios.get(`${API_URL}/api/workouts/my-monthly-board/`, { headers });
+        setMonthlyBoard(board.data);
+      } catch {
+        setMonthlyBoard(null);
+      }
+
+      // 5. Puntos de aprendizaje
+      try {
+        const lp = await axios.get(`${API_URL}/api/workouts/my-learning-points/`, { headers });
+        setLearningPoints(lp.data);
+      } catch {
+        setLearningPoints(null);
+      }
     } catch (err) {
-      console.error('Error al cargar datos:', err);
       if (err.response?.status === 401) {
         onLogout();
         navigate('/login');
@@ -175,7 +190,6 @@ const UserDashboardPage = ({ token, onLogout }) => {
             transition={{ delay: 0.1 }}
             className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-lime-500 rounded-3xl p-8 mb-6 shadow-2xl shadow-emerald-500/30"
           >
-            {/* Ícono decorativo de fondo */}
             <div className="absolute top-4 right-4 opacity-20">
               <Dumbbell size={120} className="text-slate-900" strokeWidth={1} />
             </div>
@@ -254,12 +268,89 @@ const UserDashboardPage = ({ token, onLogout }) => {
           />
         </div>
 
+        {/* ==================== TABLERO MENSUAL ==================== */}
+        {monthlyBoard && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mb-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-amber-400 to-orange-400">
+                <Target size={20} className="text-slate-900" />
+              </div>
+              <div>
+                <h2 className="text-white text-xl font-bold">Tablero Mensual</h2>
+                <p className="text-slate-400 text-xs">
+                  {monthlyBoard.training_block} · Meta: {monthlyBoard.goal}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {monthlyBoard.sessions?.map((s) => (
+                <div
+                  key={s.id}
+                  className={`rounded-xl p-2 border ${
+                    s.phase === 'impacto'
+                      ? 'border-emerald-500/40 bg-emerald-500/10'
+                      : s.phase === 'descarga'
+                      ? 'border-sky-500/40 bg-sky-500/10'
+                      : 'border-amber-500/40 bg-amber-500/10'
+                  }`}
+                >
+                  <p className="text-white text-xs font-bold">S{s.session_number}</p>
+                  <p className="text-[10px] uppercase text-slate-400">{s.phase}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ==================== PUNTOS DE APRENDIZAJE ==================== */}
+        {learningPoints && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mb-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-lime-400 to-emerald-400">
+                <Award size={20} className="text-slate-900" />
+              </div>
+              <div>
+                <h2 className="text-white text-xl font-bold">Método Enseñando a Entrenar</h2>
+                <p className="text-slate-400 text-xs">
+                  {learningPoints.completed_count}/5 puntos · {learningPoints.completion_percentage}%
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              {[
+                ['knows_structure', 'Conoce su estructura'],
+                ['executes_correctly', 'Ejecuta correctamente'],
+                ['knows_progression', 'Sabe progresar'],
+                ['trains_autonomously', 'Entrena con autonomía'],
+                ['understands_evolution', 'Su estructura evoluciona'],
+              ].map(([k, label]) => (
+                <div key={k} className="flex items-center justify-between">
+                  <span className="text-slate-300">{label}</span>
+                  <span className={learningPoints[k] ? 'text-emerald-400' : 'text-slate-600'}>
+                    {learningPoints[k] ? '✓' : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* ==================== PROGRESO POR EJERCICIO ==================== */}
         {myProgress?.exercises?.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.6 }}
             className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6"
           >
             <div className="flex items-center gap-3 mb-6">
@@ -275,7 +366,7 @@ const UserDashboardPage = ({ token, onLogout }) => {
                   key={i}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + i * 0.05 }}
+                  transition={{ delay: 0.6 + i * 0.05 }}
                   className="flex items-center justify-between flex-wrap gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-emerald-500/30 transition-all"
                 >
                   <div className="flex-1 min-w-[180px]">

@@ -9,14 +9,30 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
-from .serializers import WorkoutPlanSerializer
-from .models import WorkoutPlan, WorkoutDay, Exercise, UserProgress, WorkoutExercise, ExerciseTemplate, RoutineTemplate, SessionTemplate, SessionExerciseSlot,ClientAssignment, SessionLog, SetLog, ExerciseProgression
+from .models import (
+    WorkoutPlan, WorkoutDay, Exercise, UserProgress, WorkoutExercise,
+    ExerciseTemplate, RoutineTemplate, SessionTemplate, SessionExerciseSlot,
+    ClientAssignment, SessionLog, SetLog, ExerciseProgression,
+    MonthlyProgressBoard, BoardSession, BoardExerciseEntry,
+    BoardExerciseSessionData, ClientLearningPoint, StructureChangeLog,
+    CoachProgressAction,
+)
+from .serializers import (
+    WorkoutPlanSerializer,
+    MonthlyProgressBoardSerializer,
+    MonthlyProgressBoardListSerializer,
+    ClientLearningPointSerializer,
+    StructureChangeLogSerializer,
+    CoachProgressActionSerializer,
+)
 from users.models import UserProfile
 from .progression import evaluate_progression
 from decimal import Decimal
 from django.db.models import Count, Avg, Q
 from . import ai_engine
 from .video_catalog import video_embed_url
+
+
 
 print("=" * 60)
 print("🧠 ADAPTAFIT - SISTEMA ADAPTATIVO CON IA")
@@ -2117,7 +2133,6 @@ def my_assignment(request):
         'start_date': assignment.start_date,
     })
 
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -2131,6 +2146,20 @@ def my_next_session(request):
     session = assignment.get_next_session()
     if not session:
         return Response({'detail': 'La rutina no tiene sesiones'}, status=404)
+
+    # ---- Determinar fase (impacto/descarga/potencia) desde el tablero mensual ----
+    phase = 'impacto'
+    board = MonthlyProgressBoard.objects.filter(
+        client=request.user, status='activo'
+    ).first()
+    if board:
+        done_count = SessionLog.objects.filter(
+            assignment=assignment, is_completed=True
+        ).count()
+        next_session_number = done_count + 1
+        bs = board.sessions.filter(session_number=next_session_number).first()
+        if bs:
+            phase = bs.phase
 
     # Reutiliza un log abierto o crea uno nuevo
     log, created = SessionLog.objects.get_or_create(
@@ -2146,7 +2175,8 @@ def my_next_session(request):
             slot=slot,
             defaults={'current_weight_kg': slot.initial_weight_kg},
         )
-        # Últimas 5 series registradas de este slot (histórico)
+
+        # Últimas 5 series registradas de este slot (histórico entre sesiones)
         last_sets = SetLog.objects.filter(
             session_log__assignment=assignment,
             slot=slot,
@@ -2155,24 +2185,34 @@ def my_next_session(request):
         # Series ya guardadas en ESTE log abierto (si el cliente dejó a medias)
         current_sets = list(SetLog.objects.filter(
             session_log=log, slot=slot
-        ).order_by('set_number').values('set_number', 'reps_done', 'weight_used_kg'))
+        ).order_by('set_number').values(
+            'set_number', 'reps_done', 'weight_used_kg', 'reached_failure'
+        ))
 
         slots_payload.append({
             **_serialize_slot(slot),
             'current_weight_kg': float(prog.current_weight_kg),
             'ready_to_increase': prog.ready_to_increase,
             'last_session_summary': [
-                {'reps': s.reps_done, 'weight': float(s.weight_used_kg)}
+                {
+                    'reps': s.reps_done,
+                    'weight': float(s.weight_used_kg),
+                    'reached_failure': s.reached_failure,   # 🆕
+                }
                 for s in reversed(list(last_sets))
             ],
             'current_sets': [
-                {'set_number': s['set_number'], 'reps': s['reps_done'],
-                 'weight': float(s['weight_used_kg'])}
+                {
+                    'set_number': s['set_number'],
+                    'reps': s['reps_done'],
+                    'weight': float(s['weight_used_kg']),
+                    'reached_failure': s['reached_failure'],   # 🆕
+                }
                 for s in current_sets
             ],
         })
 
-    # Ultima sesion completada: para saber si toca entrenar o descansar.
+    # Última sesión completada: para saber si toca entrenar o descansar.
     # El bucle NO depende del calendario, solo del ritmo del cliente.
     last_completed = SessionLog.objects.filter(
         assignment=assignment, is_completed=True
@@ -2191,9 +2231,9 @@ def my_next_session(request):
         'routine_name': assignment.routine.name,
         'last_session_at': last_completed.finished_at if last_completed else None,
         'days_since_last_session': days_since,
+        'phase': phase,   # 🆕
         'exercises': slots_payload,
     })
-
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
@@ -2211,6 +2251,7 @@ def add_set(request, session_log_id):
     slot_id = request.data.get('slot_id')
     reps_done = request.data.get('reps_done')
     weight_used_kg = request.data.get('weight_used_kg')
+    reached_failure = bool(request.data.get('reached_failure', False))   # ← NUEVO
 
     if slot_id in (None, '') or reps_done is None or weight_used_kg is None:
         return Response({'error': 'slot_id, reps_done y weight_used_kg son obligatorios'}, status=400)
@@ -2228,14 +2269,15 @@ def add_set(request, session_log_id):
         set_number=set_number,
         reps_done=int(reps_done),
         weight_used_kg=Decimal(str(weight_used_kg)),
+        reached_failure=reached_failure,   # ← NUEVO
     )
     return Response({
         'id': set_log.id,
         'set_number': set_log.set_number,
         'reps_done': set_log.reps_done,
         'weight_used_kg': float(set_log.weight_used_kg),
+        'reached_failure': set_log.reached_failure,   # ← NUEVO
     }, status=201)
-
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
@@ -2253,6 +2295,22 @@ def finish_session(request, session_log_id):
     rpe = request.data.get('rpe')
     notes = request.data.get('notes', '')
 
+    # ---- Determinar fase (impacto/descarga/potencia) desde el tablero mensual ----
+    phase = 'impacto'
+    next_session_number = None
+    board = MonthlyProgressBoard.objects.filter(
+        client=request.user, status='activo'
+    ).first()
+    if board:
+        done_count = SessionLog.objects.filter(
+            assignment=log.assignment, is_completed=True
+        ).count()
+        next_session_number = done_count + 1
+        bs = board.sessions.filter(session_number=next_session_number).first()
+        if bs:
+            phase = bs.phase
+
+    # ---- Evaluar progresión por slot ----
     alerts = []
     for slot in log.session_template.slots.select_related('exercise_template').all():
         sets = list(SetLog.objects.filter(session_log=log, slot=slot).order_by('set_number'))
@@ -2265,23 +2323,45 @@ def finish_session(request, session_log_id):
             defaults={'current_weight_kg': slot.initial_weight_kg},
         )
 
-        sets_data = [{'reps_done': s.reps_done, 'weight_used_kg': s.weight_used_kg} for s in sets]
+        sets_data = [{
+            'reps_done': s.reps_done,
+            'weight_used_kg': s.weight_used_kg,
+            'reached_failure': s.reached_failure,
+        } for s in sets]
+
         result = evaluate_progression(
             sets_data=sets_data,
             target_reps_min=slot.target_reps_min,
             target_reps_max=slot.target_reps_max,
             current_weight_kg=float(prog.current_weight_kg),
             increment_kg=slot.exercise_template.get_increment_kg(),
+            phase=phase,
         )
 
         prog.ready_to_increase = result['ready_to_increase']
         prog.save(update_fields=['ready_to_increase', 'last_evaluated_at'])
+
+        # ---- Reflejar en el tablero mensual si existe ----
+        if board and next_session_number:
+            entry = BoardExerciseEntry.objects.filter(board=board, slot=slot).first()
+            bs = board.sessions.filter(session_number=next_session_number).first()
+            if entry and bs:
+                BoardExerciseSessionData.objects.update_or_create(
+                    entry=entry,
+                    board_session=bs,
+                    defaults={
+                        'weight_kg': sets[-1].weight_used_kg,
+                        'reps_done': max(s.reps_done for s in sets),
+                        'reached_failure': any(s.reached_failure for s in sets),
+                    },
+                )
 
         if result['ready_to_increase']:
             alerts.append({
                 'exercise': slot.exercise_template.name,
                 'message': result['reason'],
                 'suggested_weight_kg': float(result['suggested_weight_kg']),
+                'phase': phase,
             })
 
     log.is_completed = True
@@ -2296,6 +2376,7 @@ def finish_session(request, session_log_id):
         'success': True,
         'alerts': alerts,
         'next_session_index': log.assignment.current_session_index,
+        'phase': phase,
     })
 
 
@@ -2325,6 +2406,20 @@ def apply_progression(request, slot_id):
     prog.ready_to_increase = False
     prog.times_increased += 1
     prog.save()
+
+    # 🆕 Reflejar el nuevo peso en el tablero mensual activo (si existe)
+    board = MonthlyProgressBoard.objects.filter(
+        client=request.user, status='activo'
+    ).first()
+    if board:
+        entry = BoardExerciseEntry.objects.filter(board=board, slot=slot).first()
+        if entry:
+            # Actualizamos TODAS las celdas futuras que aún no tengan dato,
+            # para que la próxima sesión ya figure con el peso nuevo.
+            future_data = BoardExerciseSessionData.objects.filter(
+                entry=entry, reps_done__isnull=True
+            )
+            future_data.update(weight_kg=new_weight)
 
     return Response({
         'success': True,
@@ -2420,3 +2515,4 @@ def client_progress_detail(request, client_id):
             for log in logs
         ],
     })
+
