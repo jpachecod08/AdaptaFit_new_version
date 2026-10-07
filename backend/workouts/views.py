@@ -2516,3 +2516,215 @@ def client_progress_detail(request, client_id):
         ],
     })
 
+# ============================================================
+# TABLERO MENSUAL — ENDPOINTS
+# ============================================================
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_monthly_board(request):
+    """El cliente ve su tablero mensual activo."""
+    board = MonthlyProgressBoard.objects.filter(
+        client=request.user, status='activo'
+    ).order_by('-month').first()
+    if not board:
+        return Response({'detail': 'Sin tablero activo'}, status=404)
+    return Response(MonthlyProgressBoardSerializer(board).data)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def client_monthly_board(request, client_id):
+    """El entrenador ve el tablero mensual de un cliente."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+    board = MonthlyProgressBoard.objects.filter(
+        client_id=client_id, trainer=request.user
+    ).order_by('-month').first()
+    if not board:
+        return Response({'detail': 'Sin tablero'}, status=404)
+    return Response(MonthlyProgressBoardSerializer(board).data)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def create_monthly_board(request, client_id):
+    """El entrenador crea un tablero mensual para un cliente y auto-genera las 8 sesiones."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response({'error': 'El cliente no tiene rutina asignada'}, status=400)
+
+    data = request.data
+    month_raw = data.get('month')
+    if not month_raw:
+        return Response({'error': 'El campo month es obligatorio (YYYY-MM-DD)'}, status=400)
+
+    try:
+        month_date = datetime.strptime(str(month_raw)[:10], '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return Response({'error': 'Formato de fecha inválido. Usa YYYY-MM-DD'}, status=400)
+
+    if MonthlyProgressBoard.objects.filter(client_id=client_id, month=month_date).exists():
+        return Response({'error': 'Ya existe un tablero para ese mes'}, status=400)
+
+    board = MonthlyProgressBoard.objects.create(
+        client_id=client_id,
+        trainer=request.user,
+        month=month_date,
+        goal=data.get('goal', 'recomposicion'),
+        training_block=data.get('training_block', 'Bloque general'),
+        frequency_per_week=data.get('frequency_per_week', 2),
+        total_sessions=data.get('total_sessions', 8),
+    )
+
+    # Auto-crear las 8 sesiones con sus fases
+    phases_by_week = {
+        1: 'impacto', 2: 'impacto',
+        3: 'descarga',
+        4: 'potencia',
+    }
+    for i in range(1, board.total_sessions + 1):
+        week = ((i - 1) // 2) + 1
+        week = min(week, 4)
+        BoardSession.objects.create(
+            board=board,
+            session_number=i,
+            week_number=week,
+            phase=phases_by_week.get(week, 'impacto'),
+        )
+
+    # Auto-crear las filas (entries) a partir de la primera sesión del assignment
+    first_session = assignment.get_next_session()
+    if first_session:
+        for slot in first_session.slots.all().order_by('order'):
+            BoardExerciseEntry.objects.create(
+                board=board, slot=slot, order=slot.order,
+            )
+
+    return Response(MonthlyProgressBoardSerializer(board).data, status=201)
+
+
+# ============================================================
+# MÉTODO ENSEÑANDO A ENTRENAR — ENDPOINTS
+# ============================================================
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_learning_points(request):
+    """El cliente ve sus 5 Puntos de Progreso de aprendizaje."""
+    lp, _ = ClientLearningPoint.objects.get_or_create(client=request.user)
+    return Response(ClientLearningPointSerializer(lp).data)
+
+
+@api_view(['GET', 'PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def client_learning_points(request, client_id):
+    """El entrenador consulta o marca los Puntos de Progreso de un cliente."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    lp, _ = ClientLearningPoint.objects.get_or_create(client_id=client_id)
+
+    if request.method == 'PATCH':
+        data = request.data
+        now = timezone.now()
+        mapping = {
+            'knows_structure': 'knows_structure_verified_at',
+            'executes_correctly': 'executes_correctly_verified_at',
+            'knows_progression': 'knows_progression_verified_at',
+            'trains_autonomously': 'trains_autonomously_verified_at',
+            'understands_evolution': 'understands_evolution_verified_at',
+        }
+        for field, ts_field in mapping.items():
+            if field in data:
+                setattr(lp, field, bool(data[field]))
+                if data[field]:
+                    setattr(lp, ts_field, now)
+                    setattr(lp, ts_field.replace('_verified_at', '_verified_by'), request.user)
+        lp.save()
+
+    return Response(ClientLearningPointSerializer(lp).data)
+
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def structure_changes(request, client_id):
+    """
+    GET: lista los cambios de estructura del cliente.
+    POST: el entrenador registra un cambio con motivo.
+    """
+    if request.method == 'GET':
+        if request.user.id != int(client_id) and not es_entrenador_o_superusuario(request.user):
+            return Response({'error': 'No autorizado'}, status=403)
+        qs = StructureChangeLog.objects.filter(client_id=client_id).order_by('-created_at')
+        return Response(StructureChangeLogSerializer(qs, many=True).data)
+
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    data = request.data
+    log = StructureChangeLog.objects.create(
+        client_id=client_id,
+        changed_by=request.user,
+        assignment_id=data.get('assignment_id'),
+        change_type=data.get('change_type', 'exercise_swap'),
+        reason=data.get('reason', ''),
+        detail=data.get('detail', ''),
+    )
+    return Response(StructureChangeLogSerializer(log).data, status=201)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def acknowledge_structure_change(request, change_id):
+    """El cliente marca que comprendió el motivo de un cambio."""
+    try:
+        log = StructureChangeLog.objects.get(id=change_id, client=request.user)
+    except StructureChangeLog.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+    log.client_acknowledged = True
+    log.save(update_fields=['client_acknowledged'])
+    return Response({'success': True})
+
+
+# ============================================================
+# COACH — ACCIONES DE PROGRESO
+# ============================================================
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def coach_actions(request, client_id):
+    """El entrenador registra o lista acciones de progreso sobre un cliente."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    if request.method == 'GET':
+        qs = CoachProgressAction.objects.filter(
+            coach=request.user, client_id=client_id
+        ).order_by('-created_at')[:50]
+        return Response(CoachProgressActionSerializer(qs, many=True).data)
+
+    data = request.data
+    action = CoachProgressAction.objects.create(
+        coach=request.user,
+        client_id=client_id,
+        assignment_id=data.get('assignment_id'),
+        session_log_id=data.get('session_log_id'),
+        action=data.get('action', 'other'),
+        notes=data.get('notes', ''),
+    )
+    return Response(CoachProgressActionSerializer(action).data, status=201)
+
