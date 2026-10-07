@@ -579,44 +579,43 @@ def change_password(request):
 # ----------------------------------------------------------------------
 # VISTAS PARA ENTRENADORES
 # ----------------------------------------------------------------------
-
-# 1. Obtener clientes del entrenador
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_trainer_clients(request):
-    """Obtener todos los clientes asignados a este entrenador"""
+    """Obtener todos los clientes asignados a este entrenador (vía ClientAssignment)."""
     user = request.user
-    
-    # Verificar que sea entrenador
+
     if not (user.is_staff or user.role == 'entrenador'):
         return Response({'error': 'No autorizado'}, status=403)
-    
-    # Obtener clientes asignados - primero intenta con UserProfile.trainer
-    try:
-        client_profiles = UserProfile.objects.filter(trainer=user)
-        clients = [profile.user for profile in client_profiles]
-    except:
-        # Si no hay relación entrenador-cliente, devolver lista vacía
-        clients = []
-    
+
+    from workouts.models import ClientAssignment
+
+    # 🆕 Fuente de verdad: ClientAssignment (lo que crea assign_routine)
+    assignments = ClientAssignment.objects.filter(
+        trainer=user, is_active=True
+    ).select_related('client').order_by('-created_at')
+
+    seen = set()
+    clients = []
+    for a in assignments:
+        if a.client_id not in seen and a.client is not None:
+            seen.add(a.client_id)
+            clients.append(a.client)
+
     client_data = []
     for client in clients:
-        # Obtener plan del cliente
         plan = WorkoutPlan.objects.filter(user=client).first()
-        
-        # Obtener estadísticas
         stats = get_user_stats_for_trainer(client)
-        
-        # Obtener perfil del cliente
+
         try:
             user_profile = UserProfile.objects.get(user=client)
             frecuencia = user_profile.frecuencia
         except UserProfile.DoesNotExist:
             frecuencia = 3
-        
+
         client_data.append({
             'id': client.id,
-            'name': client.nombre or f"{client.first_name} {client.last_name}" or client.email.split('@')[0],
+            'name': client.nombre or client.email.split('@')[0],
             'email': client.email,
             'plan_id': plan.id if plan else None,
             'plan_name': plan.title if plan else 'Sin plan',
@@ -630,8 +629,9 @@ def get_trainer_clients(request):
             'needs_attention': stats.get('needs_attention', False),
             'upcoming_call': None,
         })
-    
+
     return Response(client_data)
+    
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_client_details(request, client_id):
@@ -1015,33 +1015,50 @@ def admin_assign_trainer(request):
     except Exception as e:
         logger.error(f"Error en admin_assign_trainer: {e}")
         return Response({'error': str(e)}, status=500)
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def all_users_for_trainer(request):
     """
     Devuelve TODOS los usuarios con role='usuario' registrados.
     Solo para entrenadores.
+
+    El estado (is_mine / has_trainer) se calcula desde ClientAssignment,
+    que es la fuente de verdad que usa el flujo de asignación de rutinas.
     """
     user = request.user
 
     if not (user.is_staff or user.role == 'entrenador'):
         return Response({'error': 'No autorizado'}, status=403)
 
-    users = CustomUser.objects.filter(role='usuario', is_active=True).order_by('-date_joined')
+    from workouts.models import ClientAssignment
+
+    users = CustomUser.objects.filter(
+        role='usuario', is_active=True
+    ).order_by('-date_joined')
+
+    # 🆕 Precalcular asignaciones activas para todos los usuarios
+    #     en UNA sola query (evita N+1).
+    assignments = ClientAssignment.objects.filter(
+        is_active=True
+    ).select_related('trainer')
+
+    # { client_id: trainer_user_id }  — solo uno por cliente (activo)
+    active_map = {}
+    for a in assignments:
+        active_map[a.client_id] = a.trainer_id
+
+    # { trainer_user_id: email }  — para devolver el email del entrenador
+    trainer_emails = {
+        a.trainer_id: a.trainer.email
+        for a in assignments
+        if a.trainer is not None
+    }
 
     data = []
     for u in users:
-        # ¿Ya tiene entrenador asignado?
-        try:
-            profile = u.profile
-            has_trainer = profile.trainer is not None
-            trainer_email = profile.trainer.email if profile.trainer else None
-            is_mine = profile.trainer_id == user.id
-        except UserProfile.DoesNotExist:
-            has_trainer = False
-            trainer_email = None
-            is_mine = False
+        trainer_id = active_map.get(u.id)          # None si nadie le asignó
+        has_trainer = trainer_id is not None
+        is_mine = (trainer_id == user.id)
 
         data.append({
             'id': u.id,
@@ -1050,8 +1067,8 @@ def all_users_for_trainer(request):
             'date_joined': u.date_joined,
             'is_active': u.is_active,
             'has_trainer': has_trainer,
-            'trainer_email': trainer_email,
-            'is_mine': is_mine,  # ¿es cliente de este entrenador?
+            'trainer_email': trainer_emails.get(trainer_id) if has_trainer else None,
+            'is_mine': is_mine,
         })
 
     return Response(data)
