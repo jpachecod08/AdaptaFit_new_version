@@ -7,6 +7,7 @@ const UserDashboardPage = lazy(() => import('./components/UserDashboardPage'));
 const TrainerDashboardPage = lazy(() => import('./components/TrainerDashboardPage'));
 const MiRutina = lazy(() => import('./pages/MiRutina'));
 const EditarPerfil = lazy(() => import('./components/EditarPerfil'));
+const AdminPanelPage = lazy(() => import('./components/AdminPanelPage'));
 
 // 🆕 NUEVAS PÁGINAS
 const RoutineBuilderPage = lazy(() => import('./pages/RoutineBuilderPage'));
@@ -89,6 +90,17 @@ function App() {
                 ) : (
                   <Navigate to="/login" />
                 )}
+              </PrivateRoute>
+            }
+          />
+
+          {/* Panel de administración (solo con permiso es_admin; el backend
+              devuelve 403 si no lo tiene y la página lo muestra) */}
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute isAuthenticated={auth.isAuthenticated}>
+                <AdminPanelPage token={auth.token} onLogout={handleLogout} />
               </PrivateRoute>
             }
           />

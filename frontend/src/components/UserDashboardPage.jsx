@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Dumbbell, LogOut, Play, Edit, TrendingUp, Award, Bell,
   Flame, CheckCircle, Activity, Calendar, User, Trophy,
-  ArrowRight, Target, Users, Loader2,
+  ArrowRight, Target, Users, Loader2, ShieldCheck,
 } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -34,12 +34,14 @@ const UserDashboardPage = ({ token, onLogout }) => {
       // 1. Perfil
       const profileResp = await axios.get(`${API_URL}/api/users/profile/`, { headers });
       const user = profileResp.data;
-      setUserData({
-        id: user.id,
-        email: user.email,
-        name: user.nombre || user.email.split('@')[0],
-        role: user.role,
-      });
+        setUserData({
+          id: user.id,
+          email: user.email,
+          name: user.nombre || user.email.split('@')[0],
+          role: user.role,
+          es_admin: user.es_admin,
+        });
+
 
       if (user.role !== 'usuario') {
         onLogout();
@@ -137,6 +139,16 @@ const UserDashboardPage = ({ token, onLogout }) => {
             </div>
 
             <div className="flex gap-2">
+              {userData?.es_admin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="h-11 px-4 rounded-xl bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 transition-all flex items-center gap-2 text-amber-300 font-semibold text-sm"
+                  title="Panel de administración"
+                >
+                  <ShieldCheck size={18} />
+                  <span className="hidden sm:inline">Admin</span>
+                </button>
+              )}
               <button
                 onClick={handleEditProfile}
                 className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"

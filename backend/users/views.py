@@ -302,18 +302,28 @@ class UserRegisterView(generics.CreateAPIView):
 
 class TrainerRegisterView(generics.CreateAPIView):
     """
-    Vista para registrar un nuevo entrenador.
+    Vista para crear un entrenador. Solo la puede usar un administrador.
+
+    Antes estaba en abierto: cualquier persona podía autoasignarse el rol de
+    entrenador desde el formulario de registro. Ahora el rol lo otorga
+    únicamente el panel administrativo.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = TrainerRegisterSerializer
 
     def post(self, request, *args, **kwargs):
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Se requieren permisos de administrador para crear entrenadores.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(
-            {"message": "¡Registro de entrenador exitoso! Por favor, inicia sesión.", "user": serializer.data},
+            {"message": "¡Entrenador creado exitosamente! Ya puede iniciar sesión.", "user": serializer.data},
             status=status.HTTP_201_CREATED,
             headers=headers
         )

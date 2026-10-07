@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Users, Dumbbell, TrendingUp, LogOut, Edit, Eye, Video,
   UserPlus, PlusCircle, Search, AlertTriangle, CheckCircle,
-  Mail, Calendar, Settings, X, Flame, Award, Clock,
+  Mail, Calendar, Settings, X, Flame, Award, Clock, ShieldCheck,
 } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -18,6 +18,7 @@ const TrainerDashboardPage = ({ onLogout }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTable, setActiveTable] = useState('all'); // 'all' | 'clients'
+  const [esAdmin, setEsAdmin] = useState(false);
 
   // Búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,10 +56,22 @@ const TrainerDashboardPage = ({ onLogout }) => {
         return;
       }
 
-      await Promise.all([fetchClients(), fetchAllUsers()]);
+      await Promise.all([fetchClients(), fetchAllUsers(), fetchPermisos()]);
     };
     verifyAndFetch();
   }, [navigate]);
+
+  // El permiso de administrador viene del perfil, no del rol.
+  const fetchPermisos = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/users/profile/`, {
+        headers: { Authorization: getAuthHeader() },
+      });
+      setEsAdmin(Boolean(response.data?.es_admin));
+    } catch (err) {
+      console.error('Error permisos:', err);
+    }
+  };
 
   const fetchClients = async () => {
     try {
@@ -178,6 +191,16 @@ const TrainerDashboardPage = ({ onLogout }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            {esAdmin && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="h-10 px-4 rounded-xl bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 transition-all flex items-center gap-2 text-amber-300 font-semibold text-sm"
+                title="Panel de administración"
+              >
+                <ShieldCheck size={18} />
+                <span className="hidden sm:inline">Admin</span>
+              </button>
+            )}
             <button
               onClick={() => navigate('/editar-perfil')}
               className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"

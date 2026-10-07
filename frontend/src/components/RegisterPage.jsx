@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Eye, EyeOff, Mail, Lock, User, Dumbbell, Loader2, AlertCircle,
-  Phone, Briefcase, FileText, Target, ArrowRight, CheckCircle,
+  Target, ArrowRight, CheckCircle,
   Users, Trophy, Flame, TrendingUp,
 } from 'lucide-react';
 import axios from 'axios';
@@ -12,7 +12,6 @@ import { API_URL } from '../config';
 const RegisterPage = () => {
   const navigate = useNavigate();
 
-  const [role, setRole] = useState('usuario');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,9 +20,6 @@ const RegisterPage = () => {
     nombre: '',
     email: '',
     password: '',
-    telefono: '',
-    biografia: '',
-    especialidad: '',
     objetivo: '',
   });
 
@@ -40,32 +36,16 @@ const RegisterPage = () => {
     setError('');
 
     try {
-      const endpoint = role === 'entrenador'
-        ? '/api/users/register/trainer/'
-        : '/api/users/register/user/';
-
-      const payload = role === 'entrenador'
-        ? {
-            nombre: formData.nombre,
-            email: formData.email,
-            password: formData.password,
-            trainer_profile: {
-              especialidad: formData.especialidad || '',
-              certificaciones: '',
-              biografia: formData.biografia || '',
-              telefono: formData.telefono || '',
-            },
-          }
-        : {
-            nombre: formData.nombre,
-            email: formData.email,
-            password: formData.password,
-            profile: {
-              objetivo: formData.objetivo || 'mantenerse',
-            },
-          };
-
-      await axios.post(`${API_URL}${endpoint}`, payload);
+      // El registro público solo crea cuentas de cliente. Los entrenadores y
+      // administradores los da de alta el administrador desde /admin.
+      await axios.post(`${API_URL}/api/users/register/user/`, {
+        nombre: formData.nombre,
+        email: formData.email,
+        password: formData.password,
+        profile: {
+          objetivo: formData.objetivo || 'mantenerse',
+        },
+      });
 
       // Redirigir al login
       setTimeout(() => navigate('/login'), 1200);
@@ -198,34 +178,6 @@ const RegisterPage = () => {
             </p>
           </div>
 
-          {/* Selector de rol */}
-          <div className="grid grid-cols-2 gap-3 mb-6 p-1 bg-slate-100 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setRole('usuario')}
-              className={`py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                role === 'usuario'
-                  ? 'bg-white text-emerald-600 shadow-md'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <User size={18} />
-              Usuario
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('entrenador')}
-              className={`py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                role === 'entrenador'
-                  ? 'bg-white text-emerald-600 shadow-md'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Dumbbell size={18} />
-              Entrenador
-            </button>
-          </div>
-
           {/* Error */}
           {error && (
             <motion.div
@@ -298,69 +250,16 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Campos específicos por rol */}
-            {role === 'usuario' ? (
-              <>
-                {/* Objetivo (usuario) */}
-                <SelectField
-                  label="¿Cuál es tu objetivo?"
-                  name="objetivo"
-                  value={formData.objetivo}
-                  onChange={handleChange}
-                  icon={<Target size={18} />}
-                  options={objetivoOptions}
-                  disabled={loading}
-                />
-              </>
-            ) : (
-              <>
-                {/* Teléfono (entrenador) */}
-                <InputField
-                  label="Teléfono de contacto"
-                  name="telefono"
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={handleChange}
-                  placeholder="+57 300 123 4567"
-                  icon={<Phone size={18} />}
-                  disabled={loading}
-                />
-
-                {/* Especialidad (entrenador) */}
-                <InputField
-                  label="Especialidad *"
-                  name="especialidad"
-                  value={formData.especialidad}
-                  onChange={handleChange}
-                  placeholder="Ej: Fuerza y acondicionamiento"
-                  icon={<Briefcase size={18} />}
-                  required
-                  disabled={loading}
-                />
-
-                {/* Biografía (entrenador) */}
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-2 block">
-                    Biografía
-                  </label>
-                  <div className="relative">
-                    <FileText className="absolute left-4 top-4 text-slate-400" size={18} />
-                    <textarea
-                      name="biografia"
-                      value={formData.biografia}
-                      onChange={handleChange}
-                      disabled={loading}
-                      rows={3}
-                      placeholder="Cuéntanos sobre tu experiencia y filosofía de entrenamiento..."
-                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl
-                                 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100
-                                 focus:outline-none transition-all disabled:opacity-50 text-slate-900
-                                 placeholder:text-slate-400 resize-none"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+            {/* Objetivo */}
+            <SelectField
+              label="¿Cuál es tu objetivo?"
+              name="objetivo"
+              value={formData.objetivo}
+              onChange={handleChange}
+              icon={<Target size={18} />}
+              options={objetivoOptions}
+              disabled={loading}
+            />
 
             {/* Botón */}
             <motion.button

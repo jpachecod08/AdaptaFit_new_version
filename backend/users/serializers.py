@@ -26,6 +26,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'training_type' 
         ]
         read_only_fields = ['trainer_info']
+        # El entrenador se asigna desde los endpoints de asignación, nunca
+        # desde el perfil: si fuera escribible, cualquier usuario podría
+        # autoasignarse un entrenador alegando un id cualquiera.
+        extra_kwargs = {'trainer': {'read_only': True}}
     
     def get_trainer_info(self, obj):
         """Devuelve información estructurada del entrenador"""
@@ -48,6 +52,8 @@ class TrainerProfileSerializer(serializers.ModelSerializer):
 # Serializador para el registro de usuarios normales.
 class CustomUserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=True)  # Ya no read_only
+    # Solo lectura: el permiso de administrador lo da o quita el panel admin.
+    es_admin = serializers.BooleanField(source='is_admin', read_only=True)
 
     class Meta:
         model = CustomUser
@@ -57,6 +63,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'email',
             'password',
             'role',
+            'es_admin',
             'profile',
         ]
         extra_kwargs = {

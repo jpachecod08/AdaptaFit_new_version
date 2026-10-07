@@ -1,5 +1,12 @@
 # users/urls.py - ARCHIVO CORREGIDO
 from django.urls import path
+from .admin_api import (
+    admin_users,
+    admin_create_user,
+    admin_update_user,
+    admin_delete_user,
+    admin_activity,
+)
 from .views import (
     LoginView,
     UserRegisterView,
@@ -25,11 +32,20 @@ from .views import (
 )
 
 urlpatterns = [
+    # ==================== PANEL DE ADMINISTRACIÓN (solo role=admin) =========
+    path('admin/users/', admin_users, name='admin-users'),
+    path('admin/users/create/', admin_create_user, name='admin-create-user'),
+    path('admin/users/<int:user_id>/', admin_update_user, name='admin-update-user'),
+    path('admin/users/<int:user_id>/delete/', admin_delete_user, name='admin-delete-user'),
+    path('admin/activity/', admin_activity, name='admin-activity'),
+
     # Autenticación
     path('login/', LoginView.as_view(), name='login'),
     
     # Registro
     path('register/user/', UserRegisterView.as_view(), name='user-register'),
+    # Solo un administrador puede crear entrenadores. El formulario público
+    # ya no ofrece esta opción.
     path('register/trainer/', TrainerRegisterView.as_view(), name='trainer-register'),
     
     # Perfil y usuario

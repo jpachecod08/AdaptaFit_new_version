@@ -32,16 +32,46 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 # ---------- CUSTOM USER ----------
+# Roles que existen en el sistema. 'admin' solo se asigna desde el panel
+# administrativo o con el comando `manage.py make_admin`, nunca desde el
+# registro publico.
+ROLES = ('usuario', 'entrenador', 'admin')
+
+
 class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(_('email address'), unique=True)
     role = models.CharField(max_length=20, default='usuario')
     nombre = models.CharField(max_length=150, blank=True)
+    # Permiso de administracion, independiente del rol: quien lo tiene puede
+    # entrar al panel sin perder su propio dashboard (cliente o entrenador).
+    es_admin = models.BooleanField(
+        'permiso de administrador',
+        default=False,
+        help_text='Acceso total al panel de administracion.',
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+
+    @property
+    def is_admin(self):
+        """True si puede acceder al panel de administracion.
+
+        Acepta ademas los flags clasicos de Django para no dejar
+        afuera a nadie que ya tenga is_staff/is_superuser.
+        """
+        return self.es_admin or self.role == 'admin' or self.is_staff or self.is_superuser
+
+    @property
+    def is_entrenador(self):
+        return self.role == 'entrenador'
+
+    @property
+    def display_name(self):
+        return self.nombre or self.email.split('@')[0]
 
     def __str__(self):
         return self.email
@@ -137,3 +167,32 @@ class PasswordResetCode(models.Model):
         except cls.DoesNotExist:
             pass
         return None
+
+
+# ---------- AUDITORIA DE ADMINISTRACION ----------
+class AdminAction(models.Model):
+    """Registro de todo lo que hace un administrador.
+
+    Se guarda el email del actor en texto para que el historial siga
+    siendo legible aunque el usuario se elimine despues.
+    """
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='admin_actions',
+    )
+    actor_email = models.CharField(max_length=254, blank=True, default='')
+    action = models.CharField(max_length=40)          # create_trainer, delete_user...
+    target = models.CharField(max_length=254, blank=True, default='')  # email del afectado
+    target_id = models.IntegerField(null=True, blank=True)
+    detail = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Acción de administración'
+        verbose_name_plural = 'Acciones de administración'
+
+    def __str__(self):
+        return f'{self.actor_email} · {self.action} · {self.target}'
