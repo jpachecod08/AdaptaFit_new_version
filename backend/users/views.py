@@ -632,31 +632,38 @@ def get_trainer_clients(request):
         })
     
     return Response(client_data)
-
-# 2. Obtener detalles de un cliente específico
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_client_details(request, client_id):
     """Obtener detalles específicos de un cliente"""
     user = request.user
-    
+
     if not (user.is_staff or user.role == 'entrenador'):
         return Response({'error': 'No autorizado'}, status=403)
-    
+
     try:
         client = CustomUser.objects.get(id=client_id)
     except CustomUser.DoesNotExist:
         return Response({'error': 'Cliente no encontrado'}, status=404)
-    
-    # Verificar si el cliente está asignado a este entrenador
+
+    # 🆕 Verificar asignación de forma correcta:
+    # - Si el cliente no tiene perfil, no hay trainer asignado.
+    # - Si tiene trainer y NO es este entrenador → 404 (no es tu cliente).
+    # - Si no tiene trainer asignado (None) → 404 (aún no es tu cliente).
     try:
         user_profile = UserProfile.objects.get(user=client)
-        if hasattr(user_profile, 'trainer') and user_profile.trainer != user:
-            return Response({'error': 'Cliente no asignado a este entrenador'}, status=403)
+        if user_profile.trainer_id != user.id:
+            return Response(
+                {'detail': 'Este cliente no está asignado a ti.'},
+                status=404,   # antes era 403
+            )
     except UserProfile.DoesNotExist:
-        pass  # No hay perfil, pero permitimos verlo si el entrenador tiene acceso
-    
-    # Obtener plan actual
+        return Response(
+            {'detail': 'Este cliente no está asignado a ti.'},
+            status=404,
+        )
+
+    # ... el resto de la función queda EXACTAMENTE IGUAL ...
     plan = WorkoutPlan.objects.filter(user=client).first()
     plan_data = None
     if plan:
@@ -666,28 +673,28 @@ def get_client_details(request, client_id):
             'description': plan.notes if plan.notes else 'Sin descripción',
             'days': []
         }
-        
-        for day in plan.workout_days.all():  # Cambiado a workout_days
+
+        for day in plan.workout_days.all():
             day_data = {
-                'day_number': day.day_index,  # Cambiado a day_index
+                'day_number': day.day_index,
                 'name': day.name or f"Día {day.day_index}",
                 'exercises': []
             }
-            for exercise in day.workout_exercises.all():  # Cambiado a workout_exercises
+            for exercise in day.workout_exercises.all():
                 day_data['exercises'].append({
                     'id': exercise.id,
                     'name': exercise.name,
                     'sets': exercise.sets,
                     'reps': exercise.reps,
-                    'rest_time': exercise.rest_seconds,  # Cambiado a rest_seconds
+                    'rest_time': exercise.rest_seconds,
                     'notes': exercise.notes
                 })
             plan_data['days'].append(day_data)
-    
-    # Obtener historial de entrenamiento usando UserProgress
-    history = UserProgress.objects.filter(user=client, completed=True).order_by('-completed_at')[:20]
-    
-    # Obtener perfil del cliente
+
+    history = UserProgress.objects.filter(
+        user=client, completed=True
+    ).order_by('-completed_at')[:20]
+
     try:
         user_profile = UserProfile.objects.get(user=client)
         profile_data = {
@@ -702,7 +709,7 @@ def get_client_details(request, client_id):
         }
     except UserProfile.DoesNotExist:
         profile_data = {}
-    
+
     return Response({
         'client': {
             'id': client.id,
