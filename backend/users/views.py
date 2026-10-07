@@ -631,11 +631,15 @@ def get_trainer_clients(request):
         })
 
     return Response(client_data)
-    
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_client_details(request, client_id):
-    """Obtener detalles específicos de un cliente"""
+    """Obtener detalles específicos de un cliente.
+
+    La verificación de "es mi cliente" se hace contra ClientAssignment
+    (fuente de verdad del flujo de asignación de rutinas), no contra
+    UserProfile.trainer (que puede estar vacío).
+    """
     user = request.user
 
     if not (user.is_staff or user.role == 'entrenador'):
@@ -646,24 +650,20 @@ def get_client_details(request, client_id):
     except CustomUser.DoesNotExist:
         return Response({'error': 'Cliente no encontrado'}, status=404)
 
-    # 🆕 Verificar asignación de forma correcta:
-    # - Si el cliente no tiene perfil, no hay trainer asignado.
-    # - Si tiene trainer y NO es este entrenador → 404 (no es tu cliente).
-    # - Si no tiene trainer asignado (None) → 404 (aún no es tu cliente).
-    try:
-        user_profile = UserProfile.objects.get(user=client)
-        if user_profile.trainer_id != user.id:
-            return Response(
-                {'detail': 'Este cliente no está asignado a ti.'},
-                status=404,   # antes era 403
-            )
-    except UserProfile.DoesNotExist:
+    # 🆕 Verificación correcta: ¿hay una ClientAssignment activa mía para este cliente?
+    from workouts.models import ClientAssignment
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=user, is_active=True
+    ).first()
+
+    if not assignment:
         return Response(
             {'detail': 'Este cliente no está asignado a ti.'},
             status=404,
         )
 
-    # ... el resto de la función queda EXACTAMENTE IGUAL ...
+    # --- A partir de acá, todo el código que ya tenías ---
+
     plan = WorkoutPlan.objects.filter(user=client).first()
     plan_data = None
     if plan:
@@ -673,7 +673,6 @@ def get_client_details(request, client_id):
             'description': plan.notes if plan.notes else 'Sin descripción',
             'days': []
         }
-
         for day in plan.workout_days.all():
             day_data = {
                 'day_number': day.day_index,
