@@ -162,8 +162,11 @@ def password_reset_request(request):
         return response
         
     except Exception as e:
-        print(f"Error en password_reset_request: {e}")
-        response = JsonResponse({'error': 'Error interno del servidor'}, status=500)
+        logger.exception("Error en password_reset_request")
+        response = JsonResponse({
+            'error': 'Error interno del servidor',
+            'detail': f'{type(e).__name__}: {e}',
+        }, status=500)
         response["Access-Control-Allow-Origin"] = "*"
         return response
 
