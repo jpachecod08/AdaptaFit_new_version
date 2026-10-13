@@ -37,7 +37,13 @@ const PasswordResetPage = () => {
         { email: email.trim() },
         { headers: { "Content-Type": "application/json" } }
       );
-      setInfo(data.message || "Si el correo existe, recibirás un código.");
+      if (data.sent === false) {
+        setError(
+          data.message || "No se pudo enviar el correo. Inténtalo de nuevo."
+        );
+        return;
+      }
+      setInfo(data.debug_code ? "" : data.message || "Si el correo existe, recibirás un código.");
       if (data.debug_code) {
         setInfo(`Código (modo desarrollo): ${data.debug_code}`);
       }

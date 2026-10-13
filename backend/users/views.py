@@ -133,7 +133,10 @@ def password_reset_request(request):
         # Por seguridad, no revelamos si el email existe o no.
         user = User.objects.filter(email=email).first()
         if not user:
-            return _cors(JsonResponse({'message': 'Si el email existe, se enviará un código de recuperación'}))
+            return _cors(JsonResponse({
+                'message': 'Si el email existe, se enviará un código de recuperación',
+                'sent': True,
+            }))
 
         # Generar y guardar código
         try:
@@ -152,7 +155,7 @@ def password_reset_request(request):
         )
 
         if enviado:
-            return _cors(JsonResponse({'message': 'Código de recuperación enviado'}))
+            return _cors(JsonResponse({'message': 'Código de recuperación enviado', 'sent': True}))
 
         # No se pudo enviar el correo. Solo exponemos el código si el proyecto
         # lo permite explícitamente (PASSWORD_RESET_EXPOSE_CODE). En producción
@@ -160,11 +163,13 @@ def password_reset_request(request):
         # cuenta con solo conocer su email.
         payload = {
             'message': 'No se pudo enviar el correo de recuperación. '
-                       'Contacta al administrador o inténtalo más tarde.'
+                       'Contacta al administrador o inténtalo más tarde.',
+            'sent': False,
         }
         if getattr(settings, 'PASSWORD_RESET_EXPOSE_CODE', settings.DEBUG):
             payload['debug_code'] = reset_code.code
             payload['message'] = 'Código generado (modo desarrollo, correo no enviado).'
+            payload['sent'] = True
         return _cors(JsonResponse(payload))
 
     except Exception:
