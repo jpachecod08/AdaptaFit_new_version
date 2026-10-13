@@ -16,6 +16,7 @@ from .models import (
     MonthlyProgressBoard, BoardSession, BoardExerciseEntry,
     BoardExerciseSessionData, ClientLearningPoint, StructureChangeLog,
     CoachProgressAction,
+    TrainerRecommendation, BodyMeasurement, Notification,
 )
 from .serializers import (
     WorkoutPlanSerializer,
@@ -24,6 +25,9 @@ from .serializers import (
     ClientLearningPointSerializer,
     StructureChangeLogSerializer,
     CoachProgressActionSerializer,
+    TrainerRecommendationSerializer,
+    BodyMeasurementSerializer,
+    NotificationSerializer,
 )
 from users.models import UserProfile
 from .progression import evaluate_progression
@@ -1587,6 +1591,21 @@ def es_entrenador_o_superusuario(user):
     except AttributeError:
         return user.is_superuser
 
+
+def notificar(recipient_id, tipo, title, message='', actor=None, link=''):
+    """Crea una notificación in-app (RF-20/21/22)."""
+    try:
+        return Notification.objects.create(
+            recipient_id=recipient_id,
+            actor=actor,
+            type=tipo,
+            title=title,
+            message=message,
+            link=link,
+        )
+    except Exception:
+        return None
+
 @api_view(['PUT'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -1771,6 +1790,8 @@ def _serialize_session(session):
         'order': session.order,
         'label': session.label,
         'focus': session.focus,
+        'is_variation': session.is_variation,
+        'variation_type': session.variation_type,
         'slots': [_serialize_slot(s) for s in session.slots.all()],
     }
 
@@ -1781,6 +1802,8 @@ def _serialize_routine(routine):
         'name': routine.name,
         'description': routine.description,
         'duration_weeks': routine.duration_weeks,
+        'start_date': routine.start_date,
+        'end_date': routine.end_date,
         'is_active': routine.is_active,
         'total_sessions': routine.total_sessions,
         'sessions': [_serialize_session(s) for s in routine.sessions.all()],
@@ -1866,6 +1889,8 @@ def routine_templates(request):
         name=data.get('name', 'Rutina sin nombre'),
         description=data.get('description', ''),
         duration_weeks=data.get('duration_weeks', 4),
+        start_date=data.get('start_date') or None,
+        end_date=data.get('end_date') or None,
     )
     return Response(_serialize_routine(routine), status=201)
 
@@ -1895,6 +1920,10 @@ def routine_template_detail(request, pk):
         routine.description = data['description']
     if 'duration_weeks' in data:
         routine.duration_weeks = data['duration_weeks']
+    if 'start_date' in data:
+        routine.start_date = data['start_date'] or None
+    if 'end_date' in data:
+        routine.end_date = data['end_date'] or None
     if 'is_active' in data:
         routine.is_active = data['is_active']
     routine.save()
@@ -1967,6 +1996,10 @@ def session_template_detail(request, pk):
         session.focus = data['focus']
     if 'order' in data:
         session.order = data['order']
+    if 'is_variation' in data:
+        session.is_variation = bool(data['is_variation'])
+    if 'variation_type' in data:
+        session.variation_type = data['variation_type']
     session.save()
     return Response(_serialize_session(session))
 
@@ -1989,6 +2022,8 @@ def routine_add_session(request, pk):
         order=data.get('order', routine.sessions.count() + 1),
         label=data.get('label', chr(65 + routine.sessions.count())),
         focus=data.get('focus', ''),
+        is_variation=bool(data.get('is_variation', False)),
+        variation_type=data.get('variation_type', ''),
     )
     return Response(_serialize_session(session), status=201)
 
@@ -2081,7 +2116,7 @@ def slot_delete(request, pk):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def assign_routine(request, pk):
-    """Asigna una rutina a un cliente."""
+    """Asigna una rutina a uno o varios clientes (RF-08)."""
     if not es_entrenador_o_superusuario(request.user):
         return Response({'error': 'Solo entrenadores'}, status=403)
     try:
@@ -2089,24 +2124,54 @@ def assign_routine(request, pk):
     except RoutineTemplate.DoesNotExist:
         return Response({'error': 'Rutina no encontrada'}, status=404)
 
-    client_id = request.data.get('client_id')
-    if not client_id:
-        return Response({'error': 'client_id requerido'}, status=400)
+    # Acepta client_ids (lista) o client_id (uno solo)
+    client_ids = request.data.get('client_ids')
+    if client_ids is None:
+        single = request.data.get('client_id')
+        client_ids = [single] if single else []
+    if isinstance(client_ids, (str, int)):
+        client_ids = [client_ids]
+    client_ids = [int(c) for c in client_ids if str(c).strip() != '']
+    if not client_ids:
+        return Response({'error': 'client_id o client_ids requerido'}, status=400)
 
-    # Desactivar asignaciones previas
-    ClientAssignment.objects.filter(client_id=client_id, is_active=True).update(is_active=False)
+    created = []
+    for cid in client_ids:
+        # Desactivar asignaciones previas
+        ClientAssignment.objects.filter(client_id=cid, is_active=True).update(is_active=False)
+        assignment = ClientAssignment.objects.create(
+            client_id=cid,
+            trainer=request.user,
+            routine=routine,
+            current_session_index=0,
+        )
+        created.append(assignment)
+        # RF-21: notificar nueva rutina asignada
+        notificar(
+            recipient_id=cid,
+            actor=request.user,
+            tipo='routine_assigned',
+            title='Nueva rutina asignada',
+            message=f'Tu entrenador te asignó la rutina "{routine.name}".',
+            link='/mi-rutina',
+        )
 
-    assignment = ClientAssignment.objects.create(
-        client_id=client_id,
-        trainer=request.user,
-        routine=routine,
-        current_session_index=0,
-    )
     return Response({
-        'id': assignment.id,
-        'client_id': assignment.client_id,
-        'routine_id': assignment.routine_id,
-        'current_session_index': assignment.current_session_index,
+        'assigned_count': len(created),
+        'assignments': [
+            {
+                'id': a.id,
+                'client_id': a.client_id,
+                'routine_id': a.routine_id,
+                'current_session_index': a.current_session_index,
+            }
+            for a in created
+        ],
+        # compat: primer cliente
+        'id': created[0].id,
+        'client_id': created[0].client_id,
+        'routine_id': created[0].routine_id,
+        'current_session_index': created[0].current_session_index,
     }, status=201)
 
 
@@ -2232,6 +2297,8 @@ def my_next_session(request):
         'last_session_at': last_completed.finished_at if last_completed else None,
         'days_since_last_session': days_since,
         'phase': phase,   # 🆕
+        'is_variation': session.is_variation,
+        'variation_type': session.variation_type,
         'exercises': slots_payload,
     })
 
@@ -2497,6 +2564,7 @@ def client_progress_detail(request, client_id):
             'total_sessions': assignment.routine.total_sessions,
             'last_session_at': last_finished,
             'days_since_last_session': days_since,
+            'wants_coach_guidance': assignment.wants_coach_guidance,
         },
         'progressions': [
             {
@@ -2518,6 +2586,32 @@ def client_progress_detail(request, client_id):
             for log in logs
         ],
     })
+
+# ---------- ENTRENADOR: orientación del cliente (coach en piso) ----------
+@api_view(['GET', 'PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def client_coach_guidance(request, client_id):
+    """El entrenador consulta/marca si el cliente acepta orientación del coach."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response({'detail': 'Este cliente no está asignado a ti.'}, status=404)
+
+    if request.method == 'PATCH':
+        if 'wants_coach_guidance' in request.data:
+            assignment.wants_coach_guidance = bool(request.data['wants_coach_guidance'])
+            assignment.save(update_fields=['wants_coach_guidance'])
+
+    return Response({
+        'client_id': assignment.client_id,
+        'wants_coach_guidance': assignment.wants_coach_guidance,
+    })
+
 
 # ============================================================
 # TABLERO MENSUAL — ENDPOINTS
@@ -2726,6 +2820,15 @@ def structure_changes(request, client_id):
         reason=data.get('reason', ''),
         detail=data.get('detail', ''),
     )
+    # RF-22: informar al cliente del cambio realizado por el entrenador
+    notificar(
+        recipient_id=client_id,
+        actor=request.user,
+        tipo='trainer_change',
+        title='Tu entrenador actualizó tu estructura',
+        message=data.get('reason', 'Se realizó un cambio en tu entrenamiento.'),
+        link='/mi-progreso',
+    )
     return Response(StructureChangeLogSerializer(log).data, status=201)
 
 
@@ -2780,4 +2883,169 @@ def coach_actions(request, client_id):
         notes=data.get('notes', ''),
     )
     return Response(CoachProgressActionSerializer(action).data, status=201)
+
+
+# ============================================================
+# RF-10: RECOMENDACIONES / COMENTARIOS DEL ENTRENADOR
+# ============================================================
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_recommendations(request):
+    """El cliente ve las recomendaciones/comentarios que le envió su entrenador."""
+    qs = TrainerRecommendation.objects.filter(
+        client=request.user
+    ).select_related('trainer').order_by('-created_at')[:100]
+    return Response(TrainerRecommendationSerializer(qs, many=True).data)
+
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def client_recommendations(request, client_id):
+    """El entrenador lista o crea recomendaciones para un cliente."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+
+    if request.method == 'GET':
+        qs = TrainerRecommendation.objects.filter(
+            trainer=request.user, client_id=client_id
+        ).order_by('-created_at')[:100]
+        return Response(TrainerRecommendationSerializer(qs, many=True).data)
+
+    if not assignment:
+        return Response({'detail': 'Este cliente no está asignado a ti.'}, status=404)
+
+    message = (request.data.get('message') or '').strip()
+    if not message:
+        return Response({'error': 'El mensaje es obligatorio'}, status=400)
+
+    rec = TrainerRecommendation.objects.create(
+        trainer=request.user,
+        client_id=client_id,
+        assignment=assignment,
+        session_log_id=request.data.get('session_log_id') or None,
+        message=message,
+    )
+    # Notificación + aviso al cliente
+    notificar(
+        recipient_id=client_id,
+        actor=request.user,
+        tipo='recommendation',
+        title='Nueva recomendación de tu entrenador',
+        message=message[:160],
+        link='/mi-progreso',
+    )
+    return Response(TrainerRecommendationSerializer(rec).data, status=201)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def mark_recommendation_read(request, rec_id):
+    """El cliente marca una recomendación como leída."""
+    try:
+        rec = TrainerRecommendation.objects.get(id=rec_id, client=request.user)
+    except TrainerRecommendation.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=404)
+    rec.is_read = True
+    rec.read_at = timezone.now()
+    rec.save(update_fields=['is_read', 'read_at'])
+    return Response({'success': True})
+
+
+# ============================================================
+# RF-17: MEDIDAS CORPORALES E INDICADORES
+# ============================================================
+
+_BODY_FIELDS = [
+    'weight_kg', 'body_fat_percentage', 'muscle_mass_kg',
+    'chest_cm', 'waist_cm', 'hip_cm', 'arm_cm', 'thigh_cm',
+]
+
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_body_measurements(request):
+    """El cliente lista o registra sus propias medidas/indicadores (RF-17)."""
+    if request.method == 'GET':
+        qs = BodyMeasurement.objects.filter(client=request.user)[:200]
+        return Response(BodyMeasurementSerializer(qs, many=True).data)
+
+    data = request.data
+    payload = {'client': request.user}
+    for f in _BODY_FIELDS:
+        if f in data and data[f] not in (None, ''):
+            payload[f] = data[f]
+    if data.get('recorded_at'):
+        payload['recorded_at'] = data['recorded_at']
+    payload['notes'] = data.get('notes', '')
+
+    try:
+        measurement = BodyMeasurement.objects.create(**payload)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+    return Response(BodyMeasurementSerializer(measurement).data, status=201)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def client_body_measurements(request, client_id):
+    """El entrenador consulta las medidas de un cliente (RF-09/RF-17)."""
+    if not es_entrenador_o_superusuario(request.user):
+        return Response({'error': 'Solo entrenadores'}, status=403)
+
+    assignment = ClientAssignment.objects.filter(
+        client_id=client_id, trainer=request.user, is_active=True
+    ).first()
+    if not assignment:
+        return Response({'detail': 'Este cliente no está asignado a ti.'}, status=404)
+
+    qs = BodyMeasurement.objects.filter(client_id=client_id)[:200]
+    return Response(BodyMeasurementSerializer(qs, many=True).data)
+
+
+# ============================================================
+# RF-20/21/22: NOTIFICACIONES
+# ============================================================
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def my_notifications(request):
+    """Lista las notificaciones del usuario (más recientes primero)."""
+    qs = Notification.objects.filter(recipient=request.user)[:100]
+    unread = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    return Response({
+        'unread_count': unread,
+        'notifications': NotificationSerializer(qs, many=True).data,
+    })
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def mark_notification_read(request, notif_id):
+    try:
+        n = Notification.objects.get(id=notif_id, recipient=request.user)
+    except Notification.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=404)
+    n.is_read = True
+    n.save(update_fields=['is_read'])
+    return Response({'success': True})
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def mark_all_notifications_read(request):
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return Response({'success': True})
 

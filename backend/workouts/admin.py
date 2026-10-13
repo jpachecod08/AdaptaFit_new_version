@@ -6,6 +6,7 @@ from .models import (
     MonthlyProgressBoard, BoardSession, BoardExerciseEntry,
     BoardExerciseSessionData, ClientLearningPoint, StructureChangeLog,
     CoachProgressAction,
+    TrainerRecommendation, BodyMeasurement, Notification,
 )
 
 admin.site.register(Exercise)
@@ -148,3 +149,29 @@ class CoachProgressActionAdmin(admin.ModelAdmin):
                     'generated_progress_point')
     list_filter = ('action', 'generated_progress_point')
     search_fields = ('coach__email', 'client__email')
+
+
+# ============================================================
+# RF-10 / RF-17 / RF-20-22
+# ============================================================
+
+@admin.register(TrainerRecommendation)
+class TrainerRecommendationAdmin(admin.ModelAdmin):
+    list_display = ('trainer', 'client', 'is_read', 'created_at')
+    list_filter = ('is_read',)
+    search_fields = ('trainer__email', 'client__email', 'message')
+
+
+@admin.register(BodyMeasurement)
+class BodyMeasurementAdmin(admin.ModelAdmin):
+    list_display = ('client', 'recorded_at', 'weight_kg',
+                    'body_fat_percentage', 'muscle_mass_kg')
+    list_filter = ('recorded_at',)
+    search_fields = ('client__email',)
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('recipient', 'type', 'title', 'is_read', 'created_at')
+    list_filter = ('type', 'is_read')
+    search_fields = ('recipient__email', 'title')

@@ -19,6 +19,8 @@ const RoutineBuilderPage = ({ token }) => {
   // ==================== ESTADO ====================
   const [routineName, setRoutineName] = useState('');
   const [routineDescription, setRoutineDescription] = useState('');
+  const [routineStartDate, setRoutineStartDate] = useState('');
+  const [routineEndDate, setRoutineEndDate] = useState('');
   const [sessions, setSessions] = useState([{ label: 'A', focus: '', slots: [] }]);
 
   const [editingRoutineId, setEditingRoutineId] = useState(null);
@@ -32,6 +34,7 @@ const RoutineBuilderPage = ({ token }) => {
   const [newExerciseDialog, setNewExerciseDialog] = useState(false);
   const [assignDialog, setAssignDialog] = useState({ open: false, routineId: null });
   const [selectedClient, setSelectedClient] = useState('');
+  const [selectedClients, setSelectedClients] = useState([]);
   const [editingExercise, setEditingExercise] = useState(null);
   const [editExerciseDialog, setEditExerciseDialog] = useState(false);
   const [editExerciseData, setEditExerciseData] = useState({
@@ -125,6 +128,8 @@ const RoutineBuilderPage = ({ token }) => {
       const data = r.data;
       setRoutineName(data.name);
       setRoutineDescription(data.description || '');
+      setRoutineStartDate(data.start_date || '');
+      setRoutineEndDate(data.end_date || '');
       setEditingRoutineId(data.id);
 
       const loadedSessions = (data.sessions || []).map(s => ({
@@ -162,6 +167,8 @@ const RoutineBuilderPage = ({ token }) => {
     setEditingRoutineId(null);
     setRoutineName('');
     setRoutineDescription('');
+    setRoutineStartDate('');
+    setRoutineEndDate('');
     setSessions([{ label: 'A', focus: '', slots: [] }]);
     setSnack({ open: true, msg: 'Edición cancelada', sev: 'info' });
     setTimeout(() => {
@@ -375,7 +382,7 @@ const RoutineBuilderPage = ({ token }) => {
         console.log('✏️ Modo edición, actualizando rutina:', editingRoutineId);
         await axios.put(
           `${API_URL}/api/workouts/routine-templates/${editingRoutineId}/`,
-          { name: routineName, description: routineDescription, duration_weeks: 4 },
+          { name: routineName, description: routineDescription, duration_weeks: 4, start_date: routineStartDate || null, end_date: routineEndDate || null },
           { headers }
         );
         routineId = editingRoutineId;
@@ -384,7 +391,7 @@ const RoutineBuilderPage = ({ token }) => {
         console.log('🆕 Creando nueva rutina...');
         const r = await axios.post(
           `${API_URL}/api/workouts/routine-templates/`,
-          { name: routineName, description: routineDescription, duration_weeks: 4 },
+          { name: routineName, description: routineDescription, duration_weeks: 4, start_date: routineStartDate || null, end_date: routineEndDate || null },
           { headers }
         );
         routineId = r.data.id;
@@ -460,6 +467,7 @@ const RoutineBuilderPage = ({ token }) => {
         } catch (e) {
           console.error('Error al asignar:', e);
           // Si falla, mostrar diálogo
+          setSelectedClients([String(selectedClient)]);
           setAssignDialog({ open: true, routineId });
         }
       } else if (editingRoutineId) {
@@ -470,6 +478,7 @@ const RoutineBuilderPage = ({ token }) => {
         // Caso 3: rutina nueva sin cliente → abrir diálogo de asignación
         console.log('❓ Sin cliente, abriendo diálogo de asignación...');
         setTimeout(() => {
+          setSelectedClients([]);
           setAssignDialog({ open: true, routineId });
         }, 500);
       }
@@ -513,19 +522,20 @@ const RoutineBuilderPage = ({ token }) => {
 
   // ==================== ASIGNAR A CLIENTE ====================
   const handleAssign = async () => {
-    if (!selectedClient) {
-      setSnack({ open: true, msg: 'Selecciona un cliente', sev: 'warning' });
+    if (selectedClients.length === 0) {
+      setSnack({ open: true, msg: 'Selecciona al menos un cliente', sev: 'warning' });
       return;
     }
     try {
-      await axios.post(
+      const r = await axios.post(
         `${API_URL}/api/workouts/routine-templates/${assignDialog.routineId}/assign/`,
-        { client_id: selectedClient },
+        { client_ids: selectedClients },
         { headers }
       );
-      setSnack({ open: true, msg: '✅ Rutina asignada al cliente', sev: 'success' });
+      setSnack({ open: true, msg: `✅ Rutina asignada a ${r.data.assigned_count ?? selectedClients.length} cliente(s)`, sev: 'success' });
       setAssignDialog({ open: false, routineId: null });
       setSelectedClient('');
+      setSelectedClients([]);
       setTimeout(() => navigate('/dashboard'), 1200);
     } catch (e) {
       setSnack({ open: true, msg: 'Error al asignar rutina', sev: 'error' });
@@ -535,6 +545,7 @@ const RoutineBuilderPage = ({ token }) => {
   // 🆕 Cerrar diálogo de asignación sin asignar
   const skipAssign = () => {
     setAssignDialog({ open: false, routineId: null });
+    setSelectedClients([]);
     setSnack({ open: true, msg: 'Rutina guardada sin asignar. Puedes asignarla después desde el panel.', sev: 'info' });
     setTimeout(() => navigate('/dashboard'), 1500);
   };
@@ -675,6 +686,31 @@ const RoutineBuilderPage = ({ token }) => {
                 placeholder="Ej: Rutina enfocada en fuerza base"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none"
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">
+                  Fecha de inicio (RF-13)
+                </label>
+                <input
+                  type="date"
+                  value={routineStartDate}
+                  onChange={e => setRoutineStartDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-emerald-500/50 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">
+                  Fecha de fin (RF-13)
+                </label>
+                <input
+                  type="date"
+                  value={routineEndDate}
+                  onChange={e => setRoutineEndDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-emerald-500/50 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                />
+              </div>
             </div>
 
             <button
@@ -942,7 +978,7 @@ const RoutineBuilderPage = ({ token }) => {
                       Editar
                     </button>
                     <button
-                      onClick={() => setAssignDialog({ open: true, routineId: r.id })}
+                      onClick={() => { setSelectedClients([]); setAssignDialog({ open: true, routineId: r.id }); }}
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-lime-500 text-slate-900 text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-500/20 hover:scale-[1.02] transition-all"
                       title="Asignar"
                     >
@@ -1237,21 +1273,43 @@ const RoutineBuilderPage = ({ token }) => {
 
             <div className="p-6 space-y-4">
               <p className="text-slate-400 text-sm">
-                Selecciona el usuario al que quieres asignar esta rutina:
+                Selecciona uno o varios usuarios a los que quieres asignar esta rutina:
               </p>
 
-              <select
-                value={selectedClient}
-                onChange={e => setSelectedClient(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-emerald-500/50 focus:outline-none text-sm"
-              >
-                <option value="" className="bg-slate-900">Seleccionar usuario...</option>
+              <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                {allUsers.length === 0 && (
+                  <p className="text-slate-500 text-sm">No hay usuarios disponibles.</p>
+                )}
                 {allUsers.map(u => (
-                  <option key={u.id} value={u.id} className="bg-slate-900">
-                    {u.name} ({u.email}) {u.is_mine ? '· Mi cliente' : u.has_trainer ? '· Otro entrenador' : ''}
-                  </option>
+                  <label
+                    key={u.id}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedClients.includes(String(u.id))}
+                      onChange={e => {
+                        const id = String(u.id);
+                        setSelectedClients(prev =>
+                          e.target.checked ? [...prev, id] : prev.filter(x => x !== id)
+                        );
+                      }}
+                      className="w-5 h-5 accent-lime-400"
+                    />
+                    <span className="text-white text-sm">
+                      {u.name} <span className="text-slate-400">({u.email})</span>{' '}
+                      <span className="text-xs text-slate-500">
+                        {u.is_mine ? '· Mi cliente' : u.has_trainer ? '· Otro entrenador' : ''}
+                      </span>
+                    </span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              {selectedClients.length > 0 && (
+                <p className="text-emerald-300 text-xs font-semibold">
+                  {selectedClients.length} cliente(s) seleccionado(s)
+                </p>
+              )}
             </div>
 
             {/* 🆕 Footer con 3 botones: Cancelar, Saltar, Asignar */}

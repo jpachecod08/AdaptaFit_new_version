@@ -66,6 +66,21 @@ urlpatterns = [
 
     # Coach
     path('clients/<int:client_id>/coach-actions/', views.coach_actions, name='coach_actions'),
+    path('clients/<int:client_id>/coach-guidance/', views.client_coach_guidance, name='client_coach_guidance'),
+
+    # RF-10: recomendaciones del entrenador
+    path('my-recommendations/', views.my_recommendations, name='my_recommendations'),
+    path('clients/<int:client_id>/recommendations/', views.client_recommendations, name='client_recommendations'),
+    path('recommendations/<int:rec_id>/read/', views.mark_recommendation_read, name='mark_recommendation_read'),
+
+    # RF-17: medidas corporales
+    path('my-body-measurements/', views.my_body_measurements, name='my_body_measurements'),
+    path('clients/<int:client_id>/body-measurements/', views.client_body_measurements, name='client_body_measurements'),
+
+    # RF-20/21/22: notificaciones
+    path('notifications/', views.my_notifications, name='my_notifications'),
+    path('notifications/<int:notif_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
 
     # Entrenador: progreso de un cliente
     path('clients/<int:client_id>/progress/', views.client_progress_detail, name='client-progress-detail'),

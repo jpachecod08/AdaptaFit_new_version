@@ -4,6 +4,7 @@ from .models import (
     MonthlyProgressBoard, BoardSession, BoardExerciseEntry,
     BoardExerciseSessionData, ClientLearningPoint, StructureChangeLog,
     CoachProgressAction,
+    TrainerRecommendation, BodyMeasurement, Notification,
 )
 
 
@@ -181,5 +182,59 @@ class CoachProgressActionSerializer(serializers.ModelSerializer):
             'id', 'coach', 'coach_email', 'client', 'client_email',
             'assignment', 'session_log', 'action', 'notes',
             'generated_progress_point', 'created_at',
+        ]
+        read_only_fields = ['created_at']
+
+
+# ============================================================
+# SERIALIZERS: RF-10 RECOMENDACIONES
+# ============================================================
+
+class TrainerRecommendationSerializer(serializers.ModelSerializer):
+    trainer_email = serializers.EmailField(source='trainer.email', read_only=True)
+    trainer_name = serializers.SerializerMethodField()
+    client_email = serializers.EmailField(source='client.email', read_only=True)
+
+    class Meta:
+        model = TrainerRecommendation
+        fields = [
+            'id', 'trainer', 'trainer_email', 'trainer_name',
+            'client', 'client_email', 'assignment', 'session_log',
+            'message', 'is_read', 'read_at', 'created_at',
+        ]
+        read_only_fields = ['created_at', 'read_at']
+
+    def get_trainer_name(self, obj):
+        return obj.trainer.nombre or obj.trainer.email.split('@')[0]
+
+
+# ============================================================
+# SERIALIZERS: RF-17 MEDIDAS CORPORALES
+# ============================================================
+
+class BodyMeasurementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BodyMeasurement
+        fields = [
+            'id', 'client', 'recorded_at',
+            'weight_kg', 'body_fat_percentage', 'muscle_mass_kg',
+            'chest_cm', 'waist_cm', 'hip_cm', 'arm_cm', 'thigh_cm',
+            'notes', 'created_at',
+        ]
+        read_only_fields = ['created_at']
+
+
+# ============================================================
+# SERIALIZERS: RF-20/21/22 NOTIFICACIONES
+# ============================================================
+
+class NotificationSerializer(serializers.ModelSerializer):
+    actor_email = serializers.EmailField(source='actor.email', read_only=True, default=None)
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'recipient', 'actor', 'actor_email', 'type',
+            'title', 'message', 'link', 'is_read', 'created_at',
         ]
         read_only_fields = ['created_at']

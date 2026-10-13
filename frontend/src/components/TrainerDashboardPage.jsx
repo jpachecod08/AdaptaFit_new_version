@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config';
+import ClientCoachPanel from './ClientCoachPanel';
 
 const TrainerDashboardPage = ({ onLogout }) => {
   const navigate = useNavigate();
@@ -670,6 +671,7 @@ const ClientDetailsModal = ({ client, progress, progressLoading, onClose, onAssi
           {[
             { id: 'info', label: 'Información' },
             { id: 'progress', label: 'Progreso de Rutina' },
+            { id: 'coach', label: 'Black Gym' },
           ].map(t => (
             <button
               key={t.id}
@@ -750,6 +752,9 @@ const ClientDetailsModal = ({ client, progress, progressLoading, onClose, onAssi
                 </div>
               )}
             </div>
+          )}
+          {activeTab === 'coach' && (
+            <ClientCoachPanel clientId={client.client?.id} />
           )}
         </div>
 

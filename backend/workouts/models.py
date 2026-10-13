@@ -154,6 +154,12 @@ class RoutineTemplate(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     duration_weeks = models.IntegerField(default=4)
+    start_date = models.DateField(
+        null=True, blank=True, help_text='Fecha de inicio de la rutina (RF-13)'
+    )
+    end_date = models.DateField(
+        null=True, blank=True, help_text='Fecha de finalización de la rutina (RF-13)'
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -178,6 +184,14 @@ class SessionTemplate(models.Model):
     focus = models.CharField(
         max_length=200, blank=True,
         help_text='Ej: Empuje, Tirón, Piernas'
+    )
+    is_variation = models.BooleanField(
+        default=False,
+        help_text='Jornada de variación (normalmente viernes): circuito, full body, resistencia…'
+    )
+    variation_type = models.CharField(
+        max_length=120, blank=True, default='',
+        help_text='Ej: Resistencia muscular, Circuito metabólico, Full Body'
     )
 
     class Meta:
@@ -247,6 +261,10 @@ class ClientAssignment(models.Model):
         default=0, help_text='Índice de la próxima sesión a realizar (0-based)'
     )
     is_active = models.BooleanField(default=True)
+    wants_coach_guidance = models.BooleanField(
+        default=True,
+        help_text='El cliente acepta orientación del coach en piso. False = excepción informada a administración.'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -614,3 +632,117 @@ class StructureChangeLog(models.Model):
 
     def __str__(self):
         return f'{self.client.email} · {self.change_type} · {self.created_at:%Y-%m-%d}'
+
+
+# ============================================================
+# RF-10: RECOMENDACIONES / COMENTARIOS DEL ENTRENADOR
+# ============================================================
+
+class TrainerRecommendation(models.Model):
+    """
+    Mensaje/recomendación que un entrenador envía a un cliente (RF-10).
+    El cliente lo ve en su panel; el entrenador en el detalle del cliente.
+    """
+    trainer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='recommendations_sent'
+    )
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='recommendations_received'
+    )
+    assignment = models.ForeignKey(
+        ClientAssignment, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='recommendations'
+    )
+    session_log = models.ForeignKey(
+        SessionLog, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='recommendations'
+    )
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Recomendación del entrenador'
+        verbose_name_plural = 'Recomendaciones del entrenador'
+
+    def __str__(self):
+        return f'{self.trainer.email} → {self.client.email} ({self.created_at:%Y-%m-%d})'
+
+
+# ============================================================
+# RF-17: MEDIDAS CORPORALES E INDICADORES
+# ============================================================
+
+class BodyMeasurement(models.Model):
+    """
+    Registro histórico de peso, medidas corporales e indicadores (RF-17 / RF-18).
+    """
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='body_measurements'
+    )
+    recorded_at = models.DateField(default=timezone.localdate)
+    weight_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    body_fat_percentage = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    muscle_mass_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    chest_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    waist_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    hip_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    arm_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    thigh_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-recorded_at', '-created_at']
+        verbose_name = 'Medida corporal'
+        verbose_name_plural = 'Medidas corporales'
+
+    def __str__(self):
+        return f'{self.client.email} · {self.recorded_at}: {self.weight_kg}kg'
+
+
+# ============================================================
+# RF-20/21/22: NOTIFICACIONES
+# ============================================================
+
+class Notification(models.Model):
+    """
+    Notificación para un usuario: recordatorios de entrenamiento (RF-20),
+    nueva rutina asignada (RF-21) y cambios del entrenador (RF-22).
+    """
+    TYPE_CHOICES = [
+        ('routine_assigned', 'Nueva rutina asignada'),
+        ('trainer_change', 'Cambio del entrenador'),
+        ('recommendation', 'Recomendación del entrenador'),
+        ('workout_reminder', 'Recordatorio de entrenamiento'),
+        ('board', 'Progreso actualizado'),
+        ('general', 'General'),
+    ]
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='notifications_sent'
+    )
+    type = models.CharField(max_length=30, choices=TYPE_CHOICES, default='general')
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    link = models.CharField(max_length=200, blank=True, default='')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Notificación'
+        verbose_name_plural = 'Notificaciones'
+
+    def __str__(self):
+        return f'{self.recipient.email}: {self.title}'

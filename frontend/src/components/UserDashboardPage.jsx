@@ -8,6 +8,11 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config';
+import MonthlyBoardTable from './MonthlyBoardTable';
+import NotificationsBell from './NotificationsBell';
+import BodyMeasurements from './BodyMeasurements';
+import RecommendationsPanel from './RecommendationsPanel';
+import StructureChangesPanel from './StructureChangesPanel';
 
 const UserDashboardPage = ({ token, onLogout }) => {
   const [userData, setUserData] = useState(null);
@@ -154,6 +159,7 @@ const UserDashboardPage = ({ token, onLogout }) => {
             </div>
 
             <div className="flex gap-2">
+              <NotificationsBell token={token} />
               {userData?.es_admin && (
                 <button
                   onClick={() => navigate('/admin')}
@@ -287,23 +293,7 @@ const UserDashboardPage = ({ token, onLogout }) => {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 text-center">
-              {monthlyBoard.sessions?.map((s) => (
-                <div
-                  key={s.id}
-                  className={`rounded-xl p-2 border ${
-                    s.phase === 'impacto'
-                      ? 'border-emerald-500/40 bg-emerald-500/10'
-                      : s.phase === 'descarga'
-                      ? 'border-sky-500/40 bg-sky-500/10'
-                      : 'border-amber-500/40 bg-amber-500/10'
-                  }`}
-                >
-                  <p className="text-white text-xs font-bold">S{s.session_number}</p>
-                  <p className="text-[10px] uppercase text-slate-400">{s.phase}</p>
-                </div>
-              ))}
-            </div>
+            <MonthlyBoardTable board={monthlyBoard} />
           </motion.div>
         )}
 
@@ -344,6 +334,22 @@ const UserDashboardPage = ({ token, onLogout }) => {
             </div>
           </motion.div>
         )}
+
+        {/* ==================== RECOMENDACIONES DEL ENTRENADOR ==================== */}
+        <RecommendationsPanel token={token} />
+
+        {/* ==================== MEDIDAS CORPORALES ==================== */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.58 }}
+          className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mb-6"
+        >
+          <BodyMeasurements token={token} />
+        </motion.div>
+
+        {/* ==================== CAMBIOS DE ESTRUCTURA ==================== */}
+        {userData?.id && <StructureChangesPanel token={token} clientId={userData.id} />}
 
         {/* ==================== PROGRESO POR EJERCICIO ==================== */}
         {myProgress?.exercises?.length > 0 && (
