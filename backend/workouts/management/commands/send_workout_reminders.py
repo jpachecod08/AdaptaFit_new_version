@@ -53,7 +53,7 @@ class Command(BaseCommand):
                 type='workout_reminder',
                 title='¡Es hora de entrenar!',
                 message='No registras entrenamientos hace unos días. ¡Retoma tu rutina!',
-                link='/mi-rutina',
+                link='/mi-entrenamiento',
             )
             enviados += 1
 

@@ -2147,13 +2147,17 @@ def assign_routine(request, pk):
         )
         created.append(assignment)
         # RF-21: notificar nueva rutina asignada
+        trainer_name = (
+            getattr(request.user, 'nombre', None)
+            or request.user.email.split('@')[0]
+        )
         notificar(
             recipient_id=cid,
             actor=request.user,
             tipo='routine_assigned',
-            title='Nueva rutina asignada',
-            message=f'Tu entrenador te asignó la rutina "{routine.name}".',
-            link='/mi-rutina',
+            title=f'{trainer_name} te asignó una nueva rutina',
+            message=f'Tu entrenador {trainer_name} te asignó la rutina "{routine.name}". Toca para verla.',
+            link='/mi-entrenamiento',
         )
 
     return Response({
@@ -2827,7 +2831,7 @@ def structure_changes(request, client_id):
         tipo='trainer_change',
         title='Tu entrenador actualizó tu estructura',
         message=data.get('reason', 'Se realizó un cambio en tu entrenamiento.'),
-        link='/mi-progreso',
+        link='/dashboard',
     )
     return Response(StructureChangeLogSerializer(log).data, status=201)
 
@@ -2939,7 +2943,7 @@ def client_recommendations(request, client_id):
         tipo='recommendation',
         title='Nueva recomendación de tu entrenador',
         message=message[:160],
-        link='/mi-progreso',
+        link='/dashboard',
     )
     return Response(TrainerRecommendationSerializer(rec).data, status=201)
 

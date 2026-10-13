@@ -260,3 +260,19 @@ else:
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'jpachecod@unicartagena.edu.co')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
     DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AdaptaFit <jpachecod@unicartagena.edu.co>')
+
+# Timeout (segundos) para la conexion SMTP. Sin esto, si el proveedor de hosting
+# bloquea el puerto SMTP (Render bloquea 25/465/587) la peticion se queda colgada
+# hasta que el worker muere. Con el timeout falla rapido y podemos continuar.
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '8'))
+
+# API HTTP opcional para enviar correos (funciona en Render, que bloquea SMTP).
+# Si se define BREVO_API_KEY, se usa la API de Brevo (ex-Sendinblue) por HTTPS.
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+EMAIL_FROM_NAME = os.environ.get('EMAIL_FROM_NAME', 'AdaptaFit')
+# Remitente que usa la API HTTP (debe estar verificado en Brevo).
+EMAIL_FROM_ADDRESS = os.environ.get('EMAIL_FROM_ADDRESS', '')
+
+# NUNCA activar en producción: expondría el código de recuperación en la respuesta,
+# permitiendo resetear la contraseña de cualquier cuenta conociendo su email.
+PASSWORD_RESET_EXPOSE_CODE = os.environ.get('PASSWORD_RESET_EXPOSE_CODE', 'False') == 'True'

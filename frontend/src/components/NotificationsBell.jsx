@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Bell, Check, X } from 'lucide-react';
+import { Bell, Check, X, ChevronRight } from 'lucide-react';
 import { API_URL } from '../config';
 
 const TYPE_STYLES = {
@@ -12,11 +13,29 @@ const TYPE_STYLES = {
   general: 'bg-white/5 border-white/10 text-slate-300',
 };
 
+const TYPE_LABELS = {
+  routine_assigned: 'Rutina',
+  trainer_change: 'Cambio',
+  recommendation: 'Recomendación',
+  workout_reminder: 'Recordatorio',
+  board: 'Progreso',
+  general: 'Aviso',
+};
+
+const ACTION_LABELS = {
+  routine_assigned: 'Ver rutina',
+  trainer_change: 'Ver cambio',
+  recommendation: 'Ver recomendación',
+  workout_reminder: 'Ir a entrenar',
+  board: 'Ver progreso',
+};
+
 const NotificationsBell = ({ token }) => {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unread, setUnread] = useState(0);
   const boxRef = useRef(null);
+  const navigate = useNavigate();
 
   const headers = { Authorization: `Token ${token}` };
 
@@ -58,6 +77,12 @@ const NotificationsBell = ({ token }) => {
     }
   };
 
+  const handleOpenNotification = (n) => {
+    if (!n.is_read) markRead(n.id);
+    setOpen(false);
+    if (n.link) navigate(n.link);
+  };
+
   const markAll = async () => {
     try {
       await axios.post(`${API_URL}/api/workouts/notifications/read-all/`, {}, { headers });
@@ -71,7 +96,10 @@ const NotificationsBell = ({ token }) => {
   return (
     <div className="relative" ref={boxRef}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setOpen((o) => !o);
+          if (!open) fetchNotifications();
+        }}
         className="relative w-11 h-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/50 transition-all flex items-center justify-center text-slate-300 hover:text-emerald-400"
         title="Notificaciones"
       >
@@ -104,32 +132,47 @@ const NotificationsBell = ({ token }) => {
               </p>
             )}
             {notifications.map((n) => (
-              <div
+              <button
                 key={n.id}
-                className={`px-4 py-3 border-b border-white/5 ${n.is_read ? 'opacity-60' : ''}`}
+                type="button"
+                onClick={() => handleOpenNotification(n)}
+                className={`w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${
+                  n.is_read ? 'opacity-60' : ''
+                }`}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded border ${TYPE_STYLES[n.type] || TYPE_STYLES.general}`}>
-                    {n.type}
+                    {TYPE_LABELS[n.type] || n.type}
                   </span>
                   {!n.is_read && (
-                    <button
-                      onClick={() => markRead(n.id)}
-                      className="ml-auto text-slate-500 hover:text-emerald-400"
-                      title="Marcar como leída"
-                    >
-                      <X size={13} />
-                    </button>
+                    <span className="w-2 h-2 rounded-full bg-red-500" title="No leída" />
                   )}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); markRead(n.id); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); markRead(n.id); } }}
+                    className="ml-auto text-slate-500 hover:text-emerald-400 cursor-pointer"
+                    title="Marcar como leída"
+                  >
+                    <X size={13} />
+                  </span>
                 </div>
                 <p className="text-white text-sm font-semibold mt-1">{n.title}</p>
                 {n.message && (
                   <p className="text-slate-400 text-xs mt-0.5">{n.message}</p>
                 )}
-                <p className="text-slate-600 text-[10px] mt-1">
-                  {n.created_at ? new Date(n.created_at).toLocaleString('es-ES') : ''}
-                </p>
-              </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-slate-600 text-[10px]">
+                    {n.created_at ? new Date(n.created_at).toLocaleString('es-ES') : ''}
+                  </span>
+                  {n.link && (
+                    <span className="text-emerald-400 text-[11px] font-semibold flex items-center gap-0.5">
+                      {ACTION_LABELS[n.type] || 'Ver'} <ChevronRight size={12} />
+                    </span>
+                  )}
+                </div>
+              </button>
             ))}
           </div>
         </div>

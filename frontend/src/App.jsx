@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 const RegisterPage = lazy(() => import('./components/RegisterPage'));
 const LoginPage = lazy(() => import('./components/loginPage'));
+const PasswordResetPage = lazy(() => import('./components/PasswordResetPage'));
 const UserDashboardPage = lazy(() => import('./components/UserDashboardPage'));
 const TrainerDashboardPage = lazy(() => import('./components/TrainerDashboardPage'));
 const MiRutina = lazy(() => import('./pages/MiRutina'));
@@ -77,6 +78,7 @@ function App() {
         <Routes>
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+          <Route path="/password-reset" element={<PasswordResetPage />} />
 
           {/* Dashboard principal */}
           <Route

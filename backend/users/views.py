@@ -12,7 +12,6 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.core.mail import send_mail
 from django.conf import settings
 from django.http import JsonResponse
 from django.db.models import Q
@@ -22,6 +21,7 @@ import json
 import logging
 
 from .models import CustomUser, UserProfile, TrainerProfile, PasswordResetCode
+from .email_utils import enviar_email
 from .serializers import (
     CustomUserSerializer, 
     TrainerRegisterSerializer, 
@@ -114,146 +114,121 @@ def get_user_stats_for_trainer(user):
 # ----------------------------------------------------------------------
 # VISTAS DE RECUPERACIÓN DE CONTRASEÑA
 # ----------------------------------------------------------------------
+def _cors(resp):
+    """Añade la cabecera CORS a una respuesta (además del middleware)."""
+    resp["Access-Control-Allow-Origin"] = "*"
+    return resp
+
+
 @csrf_exempt
 @require_POST
 def password_reset_request(request):
     try:
         data = json.loads(request.body)
-        email = data.get('email')
-        
+        email = (data.get('email') or '').strip()
+
         if not email:
-            response = JsonResponse({'error': 'El correo electrónico es requerido'}, status=400)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        # Verificar si el usuario existe
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # Por seguridad, no revelamos si el email existe o no
-            response = JsonResponse({'message': 'Si el email existe, se enviará un código de recuperación'})
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
+            return _cors(JsonResponse({'error': 'El correo electrónico es requerido'}, status=400))
+
+        # Por seguridad, no revelamos si el email existe o no.
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return _cors(JsonResponse({'message': 'Si el email existe, se enviará un código de recuperación'}))
+
         # Generar y guardar código
-        reset_code = PasswordResetCode.generate_code(email, user.id)
-        
-        # Enviar email
         try:
-            send_mail(
-                'Código de Recuperación - AdaptaFit',
-                f'Tu código de recuperación es: {reset_code.code}\n\nEste código expirará en 15 minutos.',
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-            print(f"[PASSWORD_RESET] Código {reset_code.code} enviado a {email}")
-        except Exception as e:
-            print(f"Error enviando email: {e}")
-            response = JsonResponse({
-                'message': 'Código de recuperación generado (email no enviado)',
-                'debug_code': reset_code.code  # Solo para desarrollo
-            })
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        response = JsonResponse({'message': 'Código de recuperación enviado'})
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
-        
-    except Exception as e:
+            reset_code = PasswordResetCode.generate_code(email, user.id)
+        except Exception:
+            logger.exception("No se pudo generar el código de recuperación")
+            return _cors(JsonResponse(
+                {'error': 'No se pudo generar el código. Intenta de nuevo más tarde.'},
+                status=500,
+            ))
+
+        enviado = enviar_email(
+            email,
+            'Código de Recuperación - AdaptaFit',
+            f'Tu código de recuperación es: {reset_code.code}\n\nEste código expirará en 15 minutos.',
+        )
+
+        if enviado:
+            return _cors(JsonResponse({'message': 'Código de recuperación enviado'}))
+
+        # No se pudo enviar el correo. Solo exponemos el código si el proyecto
+        # lo permite explícitamente (PASSWORD_RESET_EXPOSE_CODE). En producción
+        # NUNCA debe estar activo: permitiría cambiar la contraseña de cualquier
+        # cuenta con solo conocer su email.
+        payload = {
+            'message': 'No se pudo enviar el correo de recuperación. '
+                       'Contacta al administrador o inténtalo más tarde.'
+        }
+        if getattr(settings, 'PASSWORD_RESET_EXPOSE_CODE', settings.DEBUG):
+            payload['debug_code'] = reset_code.code
+            payload['message'] = 'Código generado (modo desarrollo, correo no enviado).'
+        return _cors(JsonResponse(payload))
+
+    except Exception:
         logger.exception("Error en password_reset_request")
-        response = JsonResponse({
-            'error': 'Error interno del servidor',
-            'detail': f'{type(e).__name__}: {e}',
-        }, status=500)
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
+        return _cors(JsonResponse({'error': 'Error interno del servidor'}, status=500))
+
 
 @csrf_exempt
 @require_POST
 def password_reset_verify(request):
     try:
         data = json.loads(request.body)
-        email = data.get('email')
-        code = data.get('code')
-        
+        email = (data.get('email') or '').strip()
+        code = (data.get('code') or '').strip()
+
         if not email or not code:
-            response = JsonResponse({'error': 'Email y código son requeridos'}, status=400)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        # Verificar código en la base de datos
+            return _cors(JsonResponse({'error': 'Email y código son requeridos'}, status=400))
+
         reset_code = PasswordResetCode.get_valid_code(email, code)
-        
         if not reset_code:
-            response = JsonResponse({'error': 'Código expirado o inválido'}, status=400)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        # Marcar código como verificado
+            return _cors(JsonResponse({'error': 'Código expirado o inválido'}, status=400))
+
         reset_code.verified = True
         reset_code.save()
-        
-        response = JsonResponse({'message': 'Código verificado correctamente'})
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
-        
-    except Exception as e:
-        print(f"Error en password_reset_verify: {e}")
-        response = JsonResponse({'error': 'Error interno del servidor'}, status=500)
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
+
+        return _cors(JsonResponse({'message': 'Código verificado correctamente'}))
+
+    except Exception:
+        logger.exception("Error en password_reset_verify")
+        return _cors(JsonResponse({'error': 'Error interno del servidor'}, status=500))
+
 
 @csrf_exempt
 @require_POST
 def password_reset_confirm(request):
     try:
         data = json.loads(request.body)
-        email = data.get('email')
-        code = data.get('code')
+        email = (data.get('email') or '').strip()
+        code = (data.get('code') or '').strip()
         new_password = data.get('new_password')
-        
+
         if not email or not code or not new_password:
-            response = JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
+            return _cors(JsonResponse({'error': 'Todos los campos son requeridos'}, status=400))
+
         if len(new_password) < 6:
-            response = JsonResponse({'error': 'La contraseña debe tener al menos 6 caracteres'}, status=400)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        # Verificar código en la base de datos
+            return _cors(JsonResponse({'error': 'La contraseña debe tener al menos 6 caracteres'}, status=400))
+
         reset_code = PasswordResetCode.get_valid_code(email, code)
-        
         if not reset_code or not reset_code.verified:
-            response = JsonResponse({'error': 'Código no verificado o inválido'}, status=400)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        # Actualizar contraseña del usuario
+            return _cors(JsonResponse({'error': 'Código no verificado o inválido'}, status=400))
+
         try:
             user = User.objects.get(id=reset_code.user_id)
             user.password = make_password(new_password)
             user.save()
         except User.DoesNotExist:
-            response = JsonResponse({'error': 'Usuario no encontrado'}, status=404)
-            response["Access-Control-Allow-Origin"] = "*"
-            return response
-        
-        # Eliminar código usado
+            return _cors(JsonResponse({'error': 'Usuario no encontrado'}, status=404))
+
         reset_code.delete()
-        
-        response = JsonResponse({'message': 'Contraseña actualizada correctamente'})
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
-        
-    except Exception as e:
-        print(f"Error en password_reset_confirm: {e}")
-        response = JsonResponse({'error': 'Error interno del servidor'}, status=500)
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
+        return _cors(JsonResponse({'message': 'Contraseña actualizada correctamente'}))
+
+    except Exception:
+        logger.exception("Error en password_reset_confirm")
+        return _cors(JsonResponse({'error': 'Error interno del servidor'}, status=500))
 
 # ----------------------------------------------------------------------
 # VISTA DE LOGIN CORREGIDA
